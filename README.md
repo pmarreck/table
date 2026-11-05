@@ -2,8 +2,8 @@
 
 `table` is an in-progress command-line converter for tabular formats. The current
 slice supports CSV, TSV, Markdown pipe tables and the project's [versioned
-intermediate representation](docs/intermediate-format.md). ASCII and ANSI visual output use the predecessor renderer; visual table input
-is not implemented yet.
+intermediate representation](docs/intermediate-format.md). ASCII and ANSI visual output use the predecessor renderer. Visual table input
+is supported for a conservative subset and requires explicit loss acceptance.
 
 Build with `./build` and run the complete current suite with `./test`. Both
 require Nix. The build publishes a command in `bin/<PF>/`; on Linux x86-64:
@@ -20,7 +20,7 @@ not a standalone distribution. Native build and test have been exercised on
 Linux x86-64 only. The flake declares Linux ARM64 and macOS ARM64 packages;
 those targets have not yet been qualified. Windows packaging remains open.
 
-Both formats must be specified: `csv`, `tsv`, `markdown`, or `ir`. CSV and TSV
+Both formats must be specified: `csv`, `tsv`, `markdown`, `ir`, `ascii`, or `ansi`. CSV and TSV
 treat the first row as a header by default; `--no-header` treats it as data.
 IR carries header presence. CSV and TSV do not, so choose the same header
 option when reading them back. Input must be UTF-8 and rectangular. CSV accepts
@@ -55,3 +55,24 @@ visual output. The outer converter buffers input and rendered output, so the
 predecessor's fixed-width streaming behavior is not yet exposed. The renderer
 sees a pipe, so it uses `COLUMNS` or its 80-column fallback unless you specify
 `--terminal-width`; parent-terminal width detection remains open.
+
+Visual input requires `--allow-lossy`, because padding is stripped and prior
+clipping or replacement cannot be undone. For example:
+
+```sh
+table --from ansi --to csv --allow-lossy < displayed-table.txt
+```
+
+The reader accepts boxed tables with the predecessor's ASCII or Unicode border
+profiles and exact display-cell column boundaries. Unicode input uses the same
+pinned Unicode 17 grapheme and width policy as the predecessor renderer. Extra separators, inconsistent widths, missing borders and ambiguous
+row separators are errors. A separator after the first row marks a header; its
+absence means no header. In ANSI mode, SGR color sequences are discarded; other
+escape sequences are rejected. ASCII mode rejects all escape sequences.
+
+Custom input borders can be specified as 11 comma-separated single ASCII
+punctuation glyphs (other than comma), in this order: top left, top join, top
+right, middle left, middle join, middle right, bottom left, bottom join, bottom
+right, horizontal, vertical. For example, `--visual-glyphs '*,*,*,*,*,*,*,*,*,~,!'`.
+Horizontal, vertical and junction glyphs must be distinct from one another.
+An input cell containing the vertical separator is rejected as ambiguous.

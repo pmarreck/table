@@ -5,7 +5,10 @@ fn invoke(args: &[&str], input: &[u8]) -> std::process::Output {
     let mut child = Command::new(env!("CARGO_BIN_EXE_table"))
         .args(args).stdin(Stdio::piped()).stdout(Stdio::piped()).stderr(Stdio::piped())
         .spawn().unwrap();
-    child.stdin.take().unwrap().write_all(input).unwrap();
+    if let Err(error) = child.stdin.take().unwrap().write_all(input) {
+        // A command that rejects its arguments may exit before consuming stdin.
+        assert_eq!(error.kind(), std::io::ErrorKind::BrokenPipe);
+    }
     child.wait_with_output().unwrap()
 }
 
@@ -56,4 +59,26 @@ fn visual_output_sanitizes_untrusted_controls() {
     assert!(result.status.success(), "{}", String::from_utf8_lossy(&result.stderr));
     assert!(!result.stdout.contains(&0x1b));
     assert!(String::from_utf8(result.stdout).unwrap().contains('�'));
+}
+
+#[test]
+fn visual_input_requires_explicit_lossy_acceptance() {
+    let input = b"+------+---+\n| name | n |\n+------+---+\n| A    | 2 |\n+------+---+\n";
+    let denied = invoke(&["--from", "ascii", "--to", "csv"], input);
+    assert!(!denied.status.success());
+    assert!(denied.stdout.is_empty());
+    let accepted = invoke(&["--from", "ascii", "--to", "csv", "--allow-lossy"], input);
+    assert!(accepted.status.success(), "{}", String::from_utf8_lossy(&accepted.stderr));
+    assert_eq!(accepted.stdout, b"name,n\nA,2\n");
+}
+
+#[test]
+fn unicode_visual_output_can_be_read_when_not_clipped() {
+    let source = "name,value\n界,e\u{301}\n".as_bytes();
+    let rendered = invoke(&["--from", "csv", "--to", "ansi", "--terminal-width", "80", "--color", "always"], source);
+    assert!(rendered.status.success(), "{}", String::from_utf8_lossy(&rendered.stderr));
+    assert!(rendered.stdout.contains(&0x1b));
+    let restored = invoke(&["--from", "ansi", "--to", "csv", "--allow-lossy"], &rendered.stdout);
+    assert!(restored.status.success(), "{}", String::from_utf8_lossy(&restored.stderr));
+    assert_eq!(restored.stdout, source);
 }

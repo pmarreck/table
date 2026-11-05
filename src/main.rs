@@ -8,9 +8,15 @@ fn run() -> Result<(), String> {
     let mut header = true;
     let mut visual_options = Vec::new();
     let mut explicit_color = false;
+    let mut allow_lossy = false;
+    let mut glyphs = None;
     while let Some(arg) = args.next() {
         let (key, inline) = match arg.split_once('=') { Some((key, value)) => (key, Some(value.to_owned())), None => (arg.as_str(), None) };
         match key {
+            "--visual-glyphs" => {
+                glyphs = Some(match inline { Some(v) => v, None => args.next().ok_or("--visual-glyphs requires a value")? });
+            }
+            "--allow-lossy" if inline.is_none() => allow_lossy = true,
             "--from" | "--to" => {
                 let value = match inline { Some(v) => v, None => args.next().ok_or_else(|| format!("{key} requires a value"))? };
                 if key == "--from" { from = Some(value); } else { to = Some(value); }
@@ -25,15 +31,18 @@ fn run() -> Result<(), String> {
             "--header" if inline.is_none() => header = true,
             "--no-header" if inline.is_none() => header = false,
             "--about" if inline.is_none() => { println!("table {} — Convert tabular data; PF={}{}", env!("CARGO_PKG_VERSION"), platform(), variant()); return Ok(()); }
-            "-h" | "--help" if inline.is_none() => { println!("Usage: table --from csv|tsv|markdown|ir --to csv|tsv|markdown|ir|ascii|ansi [--header|--no-header]\nVisual output: --widths, --align, --overflow, --terminal-width, --color, --plain, --decimal-separator."); return Ok(()); }
+            "-h" | "--help" if inline.is_none() => { println!("Usage: table --from csv|tsv|markdown|ir|ascii|ansi --to csv|tsv|markdown|ir|ascii|ansi [--header|--no-header]\nVisual output: --widths, --align, --overflow, --terminal-width, --color, --plain, --decimal-separator."); return Ok(()); }
             _ => return Err(format!("unknown option: {arg}")),
         }
     }
     let from = from.ok_or("--from is required")?;
     let to = to.ok_or("--to is required")?;
-    if !["csv", "tsv", "markdown", "ir"].contains(&from.as_str()) { return Err("input formats: csv, tsv, markdown, ir".into()); }
+    if !["csv", "tsv", "markdown", "ir", "ascii", "ansi"].contains(&from.as_str()) { return Err("input formats: csv, tsv, markdown, ir, ascii, ansi".into()); }
     if !["csv", "tsv", "markdown", "ir", "ascii", "ansi"].contains(&to.as_str()) { return Err("output formats: csv, tsv, markdown, ir, ascii, ansi".into()); }
     let visual = to == "ascii" || to == "ansi";
+    let visual_input = from == "ascii" || from == "ansi";
+    if visual_input && !allow_lossy { return Err("visual input is lossy; pass --allow-lossy to accept padding removal and possible prior clipping".into()); }
+    if !visual_input && (allow_lossy || glyphs.is_some()) { return Err("--allow-lossy and --visual-glyphs require visual input".into()); }
     if !visual && !visual_options.is_empty() { return Err("display options require ASCII or ANSI output".into()); }
     if visual && !explicit_color {
         let color = auto_color();
@@ -43,6 +52,7 @@ fn run() -> Result<(), String> {
     io::stdin().read_to_end(&mut input).map_err(|e| e.to_string())?;
     let table = match from.as_str() {
         "ir" => decode(&input),
+        "ascii" | "ansi" => table::visual_input::parse(std::str::from_utf8(&input).map_err(|_| "input is not UTF-8")?, from == "ansi", glyphs.as_deref()),
         "markdown" => table::markdown::parse(std::str::from_utf8(&input).map_err(|_| "input is not UTF-8")?),
         "csv" | "tsv" => parse_delimited(std::str::from_utf8(&input).map_err(|_| "input is not UTF-8")?, from == "csv", header),
         _ => unreachable!(),
