@@ -179,3 +179,25 @@ fn buffered_visual_output_uses_parent_terminal_width() {
     assert_eq!(actual, expected, "wrong terminal width: {text:?}");
     }
 }
+
+#[test]
+fn installed_renderer_is_selected_relative_to_executable() {
+    use std::fs;
+    let root = std::env::temp_dir().join(format!("table-relocation-{}-{}", std::process::id(), std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).unwrap().as_nanos()));
+    fs::create_dir(&root).unwrap();
+    struct Cleanup(std::path::PathBuf);
+    impl Drop for Cleanup { fn drop(&mut self) { let _ = std::fs::remove_dir_all(&self.0); } }
+    let _cleanup = Cleanup(root.clone());
+    fs::create_dir(root.join("bin")).unwrap();
+    fs::create_dir(root.join("libexec")).unwrap();
+    let suffix = std::env::consts::EXE_SUFFIX;
+    let binary = root.join("bin").join(format!("table{suffix}"));
+    fs::copy(env!("CARGO_BIN_EXE_table"), &binary).unwrap();
+    // A deliberately invalid bundled renderer must be selected ahead of the
+    // valid Nix build-time fallback, causing an observable launch failure.
+    fs::write(root.join("libexec").join(format!("tsv-to-ansi-table{suffix}")), b"not an executable").unwrap();
+    let output = Command::new(binary).args(["--from", "csv", "--to", "ansi"])
+        .stdin(Stdio::null()).output().unwrap();
+    assert!(!output.status.success());
+    assert!(String::from_utf8_lossy(&output.stderr).contains("cannot start renderer"));
+}

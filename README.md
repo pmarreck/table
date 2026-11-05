@@ -15,19 +15,24 @@ printf 'name,count\nAlice,2\n' | bin/linux-amd64/table --from csv --to markdown
 The build also publishes `bin/<PF>/tsv-to-ansi-table`, the pinned predecessor's
 original command, for existing scripts and its fixed-width streaming mode.
 
-`./build --all-platforms` builds and publishes each currently declared Nix
-platform, using a suitable native or remote builder; it stops on the first
+`./build --all-platforms` builds and publishes the three declared Unix targets,
+using a suitable native or remote builder; it stops on the first
 failure. `--all-implementations` selects the sole Rust implementation, and
 `--all` combines both scopes. A foreign build is checked by executable header;
-native execution remains a separate qualification. Windows packages are not
-declared yet.
+native execution remains a separate qualification.
 
-The current host build is dynamically linked to its Nix store runtime and is
-not a standalone distribution. Native Nix build and tests have been exercised on Linux x86-64 and macOS
-ARM64. Publication through `./build` has been exercised on Linux x86-64.
+The Unix host build is dynamically linked to its Nix store runtime and is
+not a standalone distribution. Native Nix build and tests have been exercised
+on Linux x86-64 and macOS ARM64. Publication through `./build` has been
+exercised on Linux x86-64.
 The Linux ARM64 converter and renderer have been cross-built and their
 executable headers inspected; native runtime testing remains open. The
-cross-build uses the predecessor's Zig renderer. Windows packaging remains open.
+cross-build uses the predecessor's Zig renderer. The experimental
+`nix build .#windows-amd64-cross` output bundles both Windows executables and a
+renderer in `libexec` without requiring symlink support. It has been exercised
+under isolated Wine, but not on native Windows; publication under `bin/<PF>`
+is not implemented for Windows. Windows ARM64 is not packaged: the pinned Nix
+package set marks its Rust cross target unsupported.
 
 Both formats must be specified: `csv`, `tsv`, `markdown`, `ir`, `ascii`, or `ansi`. CSV and TSV
 treat the first row as a header by default; `--no-header` treats it as data.

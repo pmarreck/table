@@ -3,9 +3,18 @@ use std::io::Write;
 use std::process::{Command, Stdio};
 use std::thread;
 
+fn renderer_path() -> Result<std::path::PathBuf, String> {
+    let executable = std::env::current_exe().map_err(|e| format!("cannot locate table executable: {e}"))?;
+    let root = executable.parent().and_then(std::path::Path::parent).ok_or("cannot locate installation directory")?;
+    let name = if cfg!(windows) { "tsv-to-ansi-table.exe" } else { "tsv-to-ansi-table" };
+    let bundled = root.join("libexec").join(name);
+    if bundled.is_file() { return Ok(bundled); }
+    option_env!("TABLE_RENDERER").map(std::path::PathBuf::from).ok_or_else(|| "renderer not configured at build time".into())
+}
+
 /// The predecessor can consume TSV directly and stream fixed-width layouts.
 pub fn render_tsv(ascii: bool, header: bool, options: &[String]) -> Result<(), String> {
-    let renderer = option_env!("TABLE_RENDERER").ok_or("renderer not configured at build time")?;
+    let renderer = renderer_path()?;
     let mut command = Command::new(renderer);
     if !header { command.arg("--no-header"); }
     if ascii { command.arg("--ascii"); }
@@ -17,7 +26,7 @@ pub fn render_tsv(ascii: bool, header: bool, options: &[String]) -> Result<(), S
 /// Delegate display layout and sanitization to the pinned predecessor renderer.
 pub fn render(table: &Table, ascii: bool, options: &[String]) -> Result<Vec<u8>, String> {
     table.validate().map_err(str::to_owned)?;
-    let renderer = option_env!("TABLE_RENDERER").ok_or("renderer not configured at build time")?;
+    let renderer = renderer_path()?;
     let mut input = String::new();
     for row in table.header.iter().chain(&table.rows) {
         for (i, cell) in row.iter().enumerate() {

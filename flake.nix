@@ -20,7 +20,15 @@
         };
         cargoLock.lockFile = ./Cargo.lock;
         TABLE_RENDERER = rendererBin;
-        postInstall = ''ln -s "$TABLE_RENDERER" "$out/bin/tsv-to-ansi-table"'';
+        postInstall = ''
+          mkdir -p "$out/libexec"
+          cp "$TABLE_RENDERER" "$out/libexec/tsv-to-ansi-table${targetPkgs.stdenv.hostPlatform.extensions.executable}"
+          ${if targetPkgs.stdenv.hostPlatform.isWindows then ''
+            cp "$TABLE_RENDERER" "$out/bin/tsv-to-ansi-table.exe"
+          '' else ''
+            ln -s ../libexec/tsv-to-ansi-table "$out/bin/tsv-to-ansi-table"
+          ''}
+        '';
         doCheck = runChecks;
         nativeCheckInputs = [ pkgs.perl pkgs.file ];
         postCheck = ''
@@ -38,6 +46,7 @@
       default = package pkgs "${renderer.packages.${system}.rust}/bin/tsv-to-ansi-table-rust" true;
     } // pkgs.lib.optionalAttrs (system == "x86_64-linux") {
       linux-arm64-cross = package pkgs.pkgsCross.aarch64-multiplatform "${renderer.packages.${system}.linux-arm64}/bin/tsv-to-ansi-table-zig" false;
+      windows-amd64-cross = package pkgs.pkgsCross.mingwW64 "${renderer.packages.${system}.windows-x86_64}/bin/tsv-to-ansi-table-zig.exe" false;
     });
     checks = forAll (system: { package = self.packages.${system}.default; });
   };
