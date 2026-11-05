@@ -26,10 +26,12 @@ for script in "$scratch/project/build" "$scratch/tools/"* "$scratch/product/bin/
     sed -i "1c#!$(command -v bash)" "$script"
 done
 chmod +x "$scratch/tools/"* "$scratch/product/bin/table"
+cp "$scratch/product/bin/table" "$scratch/product/bin/tsv-to-ansi-table"
 export PATH="$scratch/tools:$PATH" FAKE_PRODUCT="$scratch/product"
 cd "$scratch/project"
 ./build
 [[ $(readlink bin/linux-amd64/table) == ../../.nix-out/linux-amd64/release/bin/table ]]
+[[ $(readlink bin/linux-amd64/tsv-to-ansi-table) == ../../.nix-out/linux-amd64/release/bin/tsv-to-ansi-table ]]
 [[ $(readlink .nix-out/linux-amd64/release) == "$scratch/product" ]]
 # An existing recognized selection remains untouched if Nix or verification fails.
 ln -sfn /nix/store/previous-table .nix-out/linux-amd64/release

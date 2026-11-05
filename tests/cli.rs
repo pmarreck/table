@@ -36,3 +36,24 @@ fn about_describes_compiled_platform_not_environment() {
     assert!(text.contains("PF="));
     assert!(!text.contains("wrong"));
 }
+
+#[test]
+fn visual_output_matches_predecessor() {
+    let input = b"Name\tCount\nAlice\t12\nBob\t2\n";
+    let result = invoke(&["--from", "tsv", "--to", "ascii", "--color", "never", "--terminal-width", "80"], input);
+    let mut predecessor = Command::new(env!("TABLE_RENDERER")).args(["--ascii", "--color", "never", "--terminal-width", "80"])
+        .stdin(Stdio::piped()).stdout(Stdio::piped()).spawn().unwrap();
+    predecessor.stdin.take().unwrap().write_all(input).unwrap();
+    let expected = predecessor.wait_with_output().unwrap();
+    assert!(expected.status.success());
+    assert!(result.status.success(), "{}", String::from_utf8_lossy(&result.stderr));
+    assert_eq!(result.stdout, expected.stdout);
+}
+
+#[test]
+fn visual_output_sanitizes_untrusted_controls() {
+    let result = invoke(&["--from", "csv", "--to", "ansi", "--color", "never"], b"name\n\"evil\x1b[31m\nnext\"\n");
+    assert!(result.status.success(), "{}", String::from_utf8_lossy(&result.stderr));
+    assert!(!result.stdout.contains(&0x1b));
+    assert!(String::from_utf8(result.stdout).unwrap().contains('�'));
+}

@@ -17,17 +17,23 @@ cleanup() { if [[ -n "$tmp" && -d "$tmp" ]]; then if [[ -L "$tmp/output" ]]; the
 trap cleanup EXIT
 selected="$root/.nix-out/$pf/release"
 entry="$root/bin/$pf/table"
+legacy="$root/bin/$pf/tsv-to-ansi-table"
 if [[ -e "$selected" || -L "$selected" ]]; then
     [[ -L "$selected" && "$(readlink "$selected")" == /nix/store/* ]] || { echo "table: refusing unrecognized output selection: $selected" >&2; exit 1; }
 fi
 if [[ -e "$entry" || -L "$entry" ]]; then
     [[ -L "$entry" && "$(readlink "$entry")" == "../../.nix-out/$pf/release/bin/table" ]] || { echo "table: refusing unrecognized command: $entry" >&2; exit 1; }
 fi
+if [[ -e "$legacy" || -L "$legacy" ]]; then
+    [[ -L "$legacy" && "$(readlink "$legacy")" == "../../.nix-out/$pf/release/bin/tsv-to-ansi-table" ]] || { echo "table: refusing unrecognized command: $legacy" >&2; exit 1; }
+fi
 tmp=$(mktemp -d "$root/.nix-out/$pf/.candidate.XXXXXXXX")
 nix build --out-link "$tmp/output" .#default
 file -Lb "$tmp/output/bin/table" | grep -Eq "$pattern" || { echo 'table: executable header does not match host' >&2; exit 1; }
+file -Lb "$tmp/output/bin/tsv-to-ansi-table" | grep -Eq "$pattern" || { echo 'table: legacy executable header does not match host' >&2; exit 1; }
 "$tmp/output/bin/table" --about | grep -Fq "PF=$pf" || { echo 'table: executable target does not match host' >&2; exit 1; }
 # Rename is atomic even when the old selection is a symlink to a directory.
 perl -e 'rename($ARGV[0], $ARGV[1]) or die "rename: $!\n"' "$tmp/output" "$selected"
 if [[ ! -L "$entry" ]]; then ln -s "../../.nix-out/$pf/release/bin/table" "$entry"; fi
+if [[ ! -L "$legacy" ]]; then ln -s "../../.nix-out/$pf/release/bin/tsv-to-ansi-table" "$legacy"; fi
 printf 'Published %s\n' "$entry"

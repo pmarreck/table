@@ -2,8 +2,8 @@
 
 `table` is an in-progress command-line converter for tabular formats. The current
 slice supports CSV, TSV, Markdown pipe tables and the project's [versioned
-intermediate representation](docs/intermediate-format.md). ASCII/ANSI table
-conversion and compatibility with `tsv-to-ansi-table` are not implemented yet.
+intermediate representation](docs/intermediate-format.md). ASCII and ANSI visual output use the predecessor renderer; visual table input
+is not implemented yet.
 
 Build with `./build` and run the complete current suite with `./test`. Both
 require Nix. The build publishes a command in `bin/<PF>/`; on Linux x86-64:
@@ -11,6 +11,9 @@ require Nix. The build publishes a command in `bin/<PF>/`; on Linux x86-64:
 ```sh
 printf 'name,count\nAlice,2\n' | bin/linux-amd64/table --from csv --to markdown
 ```
+
+The build also publishes `bin/<PF>/tsv-to-ansi-table`, the pinned predecessor's
+original command, for existing scripts and its fixed-width streaming mode.
 
 The current host build is dynamically linked to its Nix store runtime and is
 not a standalone distribution. Native build and test have been exercised on
@@ -39,3 +42,16 @@ Input is currently buffered in memory. CSV, TSV and IR can contain arbitrary
 cell contents, including terminal control sequences; do not display untrusted
 output directly in a terminal. Visual output will require a separate terminal
 sanitization policy.
+
+ASCII and ANSI output delegate to a pinned build of the predecessor's Rust
+renderer. They retain its width, alignment, overflow, glyph and color behavior;
+for example `--widths 20,10 --align left,right --overflow truncate,auto`.
+`--terminal-width`, `--color`, `--plain` and `--decimal-separator` are also
+accepted. `TSV_TO_ANSI_TABLE_GLYPHS` retains the predecessor's documented
+custom-glyph syntax. Display formats are lossy: cells may be clipped, padded
+or sanitized. Embedded tab and line breaks become replacement characters, and
+other terminal controls are sanitized by the renderer. A warning accompanies
+visual output. The outer converter buffers input and rendered output, so the
+predecessor's fixed-width streaming behavior is not yet exposed. The renderer
+sees a pipe, so it uses `COLUMNS` or its 80-column fallback unless you specify
+`--terminal-width`; parent-terminal width detection remains open.
