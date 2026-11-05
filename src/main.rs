@@ -48,6 +48,14 @@ fn run() -> Result<(), String> {
         let color = auto_color();
         visual_options.extend(["--color".into(), if color { "always" } else { "never" }.into()]);
     }
+    if visual && from != "tsv" && !visual_options.iter().any(|arg| arg == "--terminal-width") {
+        let columns = std::env::var("COLUMNS").ok().and_then(|s| s.trim_start().parse::<usize>().ok()).filter(|n| *n > 0 && *n <= 10000);
+        if columns.is_none() {
+            if let Some(width) = terminal_width() {
+                visual_options.extend(["--terminal-width".into(), width.to_string()]);
+            }
+        }
+    }
     if from == "tsv" && visual {
         eprintln!("table: visual output may clip, pad, or sanitize cell contents");
         return table::visual::render_tsv(to == "ascii", header, &visual_options);
@@ -94,3 +102,17 @@ fn variant() -> &'static str {
 fn auto_color() -> bool {
     io::stdout().is_terminal() && std::env::var_os("NO_COLOR").is_none() && std::env::var("TERM").ok().as_deref() != Some("dumb")
 }
+
+#[cfg(unix)]
+fn terminal_width() -> Option<u16> {
+    use std::os::fd::AsRawFd;
+    let stdout = io::stdout();
+    if !stdout.is_terminal() { return None; }
+    let mut size = libc::winsize { ws_row: 0, ws_col: 0, ws_xpixel: 0, ws_ypixel: 0 };
+    // stdout is open, and size points to writable storage for TIOCGWINSZ.
+    let result = unsafe { libc::ioctl(stdout.as_raw_fd(), libc::TIOCGWINSZ, &mut size) };
+    if result == 0 && size.ws_col != 0 { Some(size.ws_col) } else { None }
+}
+
+#[cfg(not(unix))]
+fn terminal_width() -> Option<u16> { None }

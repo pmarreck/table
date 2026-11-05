@@ -54,9 +54,9 @@ other terminal controls are sanitized by the renderer. A warning accompanies
 visual output. For TSV input the converter connects the predecessor directly to stdin and
 stdout; when all widths are fixed, it streams rows before EOF. A malformed
 late row may follow output already written. Other input formats buffer input
-and rendered output. For those formats the renderer sees a pipe, so it uses
-`COLUMNS` or its 80-column fallback unless you specify `--terminal-width`;
-parent-terminal width detection remains open.
+and rendered output. Terminal width selection uses `--terminal-width`, then
+`COLUMNS`, then the parent terminal width, with an 80-column fallback. Parent
+terminal width detection for buffered input is implemented on Unix.
 
 Visual input requires `--allow-lossy`, because padding is stripped and prior
 clipping or replacement cannot be undone. For example:
