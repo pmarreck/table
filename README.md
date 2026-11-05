@@ -25,9 +25,10 @@ selects one target.
 The Unix host build is dynamically linked to its Nix store runtime and is
 not a standalone distribution. Native Nix build and tests have been exercised
 on Linux x86-64 and macOS ARM64. Publication through `./build` has been
-exercised on Linux x86-64. The Linux ARM64 converter and renderer have been cross-built and their
-executable headers inspected; native runtime testing remains open. The
-cross-build uses the predecessor's Zig renderer. The Windows cross-builds bundle
+exercised on Linux x86-64. The Linux ARM64 converter and predecessor's Zig
+renderer have been cross-built, their headers inspected, and each executable
+run separately under isolated QEMU. Native runtime testing and the converter's
+combined visual path on ARM64 remain open. The Windows cross-builds bundle
 both executables and a renderer in `libexec` without requiring symlink support.
 The x86-64 bundle has been exercised under isolated Wine, including the
 published `bin/mswin-amd64` directory, but not on native Windows. The ARM64
