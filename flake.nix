@@ -9,8 +9,9 @@
     systems = [ "x86_64-linux" "aarch64-linux" "aarch64-darwin" ];
     forAll = nixpkgs.lib.genAttrs systems;
   in {
-    packages = forAll (system: let pkgs = import nixpkgs { inherit system; }; in {
-      default = pkgs.rustPlatform.buildRustPackage {
+    packages = forAll (system: let
+      pkgs = import nixpkgs { inherit system; };
+      package = targetPkgs: rendererBin: runChecks: targetPkgs.rustPlatform.buildRustPackage {
         pname = "table";
         version = "0.1.0";
         src = pkgs.lib.fileset.toSource {
@@ -18,9 +19,9 @@
           fileset = pkgs.lib.fileset.unions [ ./Cargo.toml ./Cargo.lock ./src ./tests ./build ];
         };
         cargoLock.lockFile = ./Cargo.lock;
-        TABLE_RENDERER = "${renderer.packages.${system}.rust}/bin/tsv-to-ansi-table-rust";
+        TABLE_RENDERER = rendererBin;
         postInstall = ''ln -s "$TABLE_RENDERER" "$out/bin/tsv-to-ansi-table"'';
-        doCheck = true;
+        doCheck = runChecks;
         nativeCheckInputs = [ pkgs.perl pkgs.file ];
         postCheck = ''
           bash tests/build-publication.sh
@@ -33,6 +34,10 @@
         '';
         meta = { license = pkgs.lib.licenses.mit; mainProgram = "table"; };
       };
+    in {
+      default = package pkgs "${renderer.packages.${system}.rust}/bin/tsv-to-ansi-table-rust" true;
+    } // pkgs.lib.optionalAttrs (system == "x86_64-linux") {
+      linux-arm64-cross = package pkgs.pkgsCross.aarch64-multiplatform "${renderer.packages.${system}.linux-arm64}/bin/tsv-to-ansi-table-zig" false;
     });
     checks = forAll (system: { package = self.packages.${system}.default; });
   };

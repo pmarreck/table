@@ -17,6 +17,7 @@ cat > "$scratch/tools/nix" <<'STUB'
 #!/usr/bin/env bash
 [[ ${FAIL_BUILD:-0} != 1 ]] || exit 1
 [[ $1 == build && $2 == --out-link ]]
+printf '%s\n' "$4" >> "$BUILD_LOG"
 ln -s "$FAKE_PRODUCT" "$3"
 STUB
 cat > "$scratch/product/bin/table" <<'STUB'
@@ -28,7 +29,7 @@ for script in "$scratch/project/build" "$scratch/tools/"* "$scratch/product/bin/
 done
 chmod +x "$scratch/tools/"* "$scratch/product/bin/table"
 cp "$scratch/product/bin/table" "$scratch/product/bin/tsv-to-ansi-table"
-export PATH="$scratch/tools:$PATH" FAKE_PRODUCT="$scratch/product"
+export PATH="$scratch/tools:$PATH" FAKE_PRODUCT="$scratch/product" BUILD_LOG="$scratch/build.log"
 cd "$scratch/project"
 ./build
 [[ $(readlink bin/linux-amd64/table) == ../../.nix-out/linux-amd64/release/bin/table ]]
@@ -48,6 +49,8 @@ if ./build; then echo 'unrecognized command was replaced' >&2; exit 1; fi
 unlink bin/linux-amd64/table
 ln -s ../../.nix-out/linux-amd64/release/bin/table bin/linux-amd64/table
 ./build --all
+grep -Fxq '.#linux-arm64-cross' "$BUILD_LOG"
+grep -Fxq '.#packages.aarch64-darwin.default' "$BUILD_LOG"
 for pf in linux-arm64 macos-arm64; do
     [[ $(readlink "bin/$pf/table") == "../../.nix-out/$pf/release/bin/table" ]]
     [[ $(readlink "bin/$pf/tsv-to-ansi-table") == "../../.nix-out/$pf/release/bin/tsv-to-ansi-table" ]]

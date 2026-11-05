@@ -25,8 +25,9 @@ declared yet.
 The current host build is dynamically linked to its Nix store runtime and is
 not a standalone distribution. Native Nix build and tests have been exercised on Linux x86-64 and macOS
 ARM64. Publication through `./build` has been exercised on Linux x86-64.
-The Linux ARM64 package evaluates but has not been built or run here. Windows
-packaging remains open.
+The Linux ARM64 converter and renderer have been cross-built and their
+executable headers inspected; native runtime testing remains open. The
+cross-build uses the predecessor's Zig renderer. Windows packaging remains open.
 
 Both formats must be specified: `csv`, `tsv`, `markdown`, `ir`, `ascii`, or `ansi`. CSV and TSV
 treat the first row as a header by default; `--no-header` treats it as data.
