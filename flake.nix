@@ -74,11 +74,12 @@ EOF
           ${notices}
         '';
         doCheck = runChecks;
-        nativeCheckInputs = [ pkgs.perl pkgs.file pkgs.python3 ];
+        nativeCheckInputs = [ pkgs.perl pkgs.file pkgs.python3 pkgs.cmark-gfm ];
         postCheck = ''
           bash tests/build-publication.sh
           "target/${targetPkgs.stdenv.hostPlatform.rust.rustcTarget}/release/table-memory" --self-test
           python3 tests/csv-oracle.py "target/${targetPkgs.stdenv.hostPlatform.rust.rustcTarget}/release/table"
+          python3 tests/markdown-oracle.py "target/${targetPkgs.stdenv.hostPlatform.rust.rustcTarget}/release/table"
           (
             cd ${renderer}
             for suite in check semantics errors equals color glyphs streaming; do
