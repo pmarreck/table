@@ -78,3 +78,8 @@ right, middle left, middle join, middle right, bottom left, bottom join, bottom
 right, horizontal, vertical. For example, `--visual-glyphs '*,*,*,*,*,*,*,*,*,~,!'`.
 Horizontal, vertical and junction glyphs must be distinct from one another.
 An input cell containing the vertical separator is rejected as ambiguous.
+
+The Nix suite exercises all 36 format pairs on unclipped, unambiguous data and
+runs the pinned predecessor's CLI checks for headers, options, colors, glyphs
+and fixed-width streaming against the compatibility executable. These checks
+are not a claim that visual tables recover clipped or padded source data.

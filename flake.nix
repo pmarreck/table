@@ -22,7 +22,15 @@
         postInstall = ''ln -s "$TABLE_RENDERER" "$out/bin/tsv-to-ansi-table"'';
         doCheck = true;
         nativeCheckInputs = [ pkgs.perl pkgs.file ];
-        postCheck = "bash tests/build-publication.sh";
+        postCheck = ''
+          bash tests/build-publication.sh
+          (
+            cd ${renderer}
+            for suite in check semantics errors equals color glyphs streaming; do
+              bash "tests/cli/$suite" "$TABLE_RENDERER"
+            done
+          )
+        '';
         meta = { license = pkgs.lib.licenses.mit; mainProgram = "table"; };
       };
     });
