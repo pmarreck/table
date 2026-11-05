@@ -10,7 +10,8 @@ if [[ $1 == -s ]]; then echo Linux; else echo x86_64; fi
 STUB
 cat > "$scratch/tools/file" <<'STUB'
 #!/usr/bin/env bash
-if [[ ${BAD_HEADER:-0} == 1 ]]; then echo 'foreign executable'; else echo 'ELF 64-bit LSB executable, x86-64'; fi
+if [[ ${BAD_HEADER:-0} == 1 ]]; then echo 'foreign executable';
+else case "$2" in *linux-arm64*) echo 'ELF 64-bit LSB executable, ARM aarch64' ;; *macos-arm64*) echo 'Mach-O 64-bit executable arm64' ;; *) echo 'ELF 64-bit LSB executable, x86-64' ;; esac; fi
 STUB
 cat > "$scratch/tools/nix" <<'STUB'
 #!/usr/bin/env bash
@@ -44,3 +45,11 @@ unlink bin/linux-amd64/table
 printf 'keep me\n' > bin/linux-amd64/table
 if ./build; then echo 'unrecognized command was replaced' >&2; exit 1; fi
 [[ $(cat bin/linux-amd64/table) == 'keep me' ]]
+unlink bin/linux-amd64/table
+ln -s ../../.nix-out/linux-amd64/release/bin/table bin/linux-amd64/table
+./build --all
+for pf in linux-arm64 macos-arm64; do
+    [[ $(readlink "bin/$pf/table") == "../../.nix-out/$pf/release/bin/table" ]]
+    [[ $(readlink "bin/$pf/tsv-to-ansi-table") == "../../.nix-out/$pf/release/bin/tsv-to-ansi-table" ]]
+done
+[[ $(readlink bin/linux-amd64/table) == ../../.nix-out/linux-amd64/release/bin/table ]]

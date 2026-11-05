@@ -151,9 +151,9 @@ fn buffered_visual_output_uses_parent_terminal_width() {
     for (columns, explicit, expected) in [(None, None, 20), (Some("30"), None, 30), (Some("30"), Some("14"), 14), (Some("bad"), None, 20)] {
     let mut master = -1;
     let mut slave = -1;
-    let size = libc::winsize { ws_row: 24, ws_col: 20, ws_xpixel: 0, ws_ypixel: 0 };
+    let mut size = libc::winsize { ws_row: 24, ws_col: 20, ws_xpixel: 0, ws_ypixel: 0 };
     // The output descriptors and initial size refer to private test PTY state.
-    let rc = unsafe { libc::openpty(&mut master, &mut slave, std::ptr::null_mut(), std::ptr::null(), &size) };
+    let rc = unsafe { libc::openpty(&mut master, &mut slave, std::ptr::null_mut(), std::ptr::null_mut(), &mut size) };
     assert_eq!(rc, 0, "could not create test PTY: {}", std::io::Error::last_os_error());
     let mut master = unsafe { File::from_raw_fd(master) };
     let slave = unsafe { File::from_raw_fd(slave) };
@@ -163,12 +163,16 @@ fn buffered_visual_output_uses_parent_terminal_width() {
     if let Some(value) = explicit { command.args(["--terminal-width", value]); }
     let mut child = command.stdin(Stdio::piped()).stdout(Stdio::from(slave)).stderr(Stdio::piped()).spawn().unwrap();
     drop(command);
+    let reader = std::thread::spawn(move || {
+        let mut bytes = Vec::new();
+        // Linux PTY masters may return EIO, rather than EOF, after the slave closes.
+        if let Err(error) = master.read_to_end(&mut bytes) { assert_eq!(error.raw_os_error(), Some(libc::EIO)); }
+        bytes
+    });
     child.stdin.take().unwrap().write_all(b"name\nabcdefghijklmnopqrstuvwxyz0123456789\n").unwrap();
     let result = child.wait_with_output().unwrap();
     assert!(result.status.success(), "{}", String::from_utf8_lossy(&result.stderr));
-    let mut bytes = Vec::new();
-    // Linux PTY masters may return EIO, rather than EOF, after the slave closes.
-    if let Err(error) = master.read_to_end(&mut bytes) { assert_eq!(error.raw_os_error(), Some(libc::EIO)); }
+    let bytes = reader.join().unwrap();
     let text = String::from_utf8(bytes).unwrap();
     assert!(text.contains("..."), "expected clipping: {text:?}");
     let actual = text.lines().map(|line| line.trim_end_matches('\r').len()).max().unwrap();

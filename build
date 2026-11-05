@@ -2,38 +2,69 @@
 set -euo pipefail
 cd "$(dirname "$0")"
 root=$PWD
-if (($#)); then echo 'table: ./build currently accepts no arguments' >&2; exit 2; fi
+all_platforms=0
+if [[ ${1:-} == canonize ]]; then
+    [[ $# == 2 && $2 == rust ]] || { echo 'table: only the rust implementation is available' >&2; exit 2; }
+    echo 'table: rust is the only implementation'
+    exit 0
+fi
+for arg in "$@"; do
+    case "$arg" in
+        --all-impls|--all-implementations) ;;
+        --all-plats|--all-platforms|--all) all_platforms=1 ;;
+        *) echo "table: unknown build option: $arg" >&2; exit 2 ;;
+    esac
+done
 case "$(uname -s):$(uname -m)" in
-    Linux:x86_64|Linux:amd64) pf=linux-amd64; pattern='ELF 64-bit.*x86-64' ;;
-    Linux:aarch64|Linux:arm64) pf=linux-arm64; pattern='ELF 64-bit.*(ARM aarch64|aarch64)' ;;
-    Darwin:arm64|Darwin:aarch64) pf=macos-arm64; pattern='Mach-O 64-bit.*arm64' ;;
+    Linux:x86_64|Linux:amd64) host=linux-amd64 ;;
+    Linux:aarch64|Linux:arm64) host=linux-arm64 ;;
+    Darwin:arm64|Darwin:aarch64) host=macos-arm64 ;;
     *) echo 'table: unsupported build host' >&2; exit 1 ;;
 esac
-mkdir -p ".nix-out/$pf" "bin/$pf"
-lock="$root/.nix-out/$pf/.publish-lock"
-if ! mkdir "$lock" 2>/dev/null; then echo "table: publication is locked: $lock" >&2; exit 1; fi
-tmp=''
-cleanup() { if [[ -n "$tmp" && -d "$tmp" ]]; then if [[ -L "$tmp/output" ]]; then unlink "$tmp/output"; fi; rmdir "$tmp" 2>/dev/null || true; fi; rmdir "$lock" 2>/dev/null || true; }
-trap cleanup EXIT
-selected="$root/.nix-out/$pf/release"
-entry="$root/bin/$pf/table"
-legacy="$root/bin/$pf/tsv-to-ansi-table"
-if [[ -e "$selected" || -L "$selected" ]]; then
-    [[ -L "$selected" && "$(readlink "$selected")" == /nix/store/* ]] || { echo "table: refusing unrecognized output selection: $selected" >&2; exit 1; }
+build_one() (
+    set -euo pipefail
+    pf=$1
+    case "$pf" in
+        linux-amd64) system=x86_64-linux; pattern='ELF 64-bit.*x86-64' ;;
+        linux-arm64) system=aarch64-linux; pattern='ELF 64-bit.*(ARM aarch64|aarch64)' ;;
+        macos-arm64) system=aarch64-darwin; pattern='Mach-O 64-bit.*arm64' ;;
+        *) echo "table: unsupported target: $pf" >&2; exit 1 ;;
+    esac
+    mkdir -p ".nix-out/$pf" "bin/$pf"
+    lock="$root/.nix-out/$pf/.publish-lock"
+    if ! mkdir "$lock" 2>/dev/null; then echo "table: publication is locked: $lock" >&2; exit 1; fi
+    tmp=''
+    cleanup() { if [[ -n "$tmp" && -d "$tmp" ]]; then if [[ -L "$tmp/output" ]]; then unlink "$tmp/output"; fi; rmdir "$tmp" 2>/dev/null || true; fi; rmdir "$lock" 2>/dev/null || true; }
+    trap cleanup EXIT
+    selected="$root/.nix-out/$pf/release"
+    entry="$root/bin/$pf/table"
+    legacy="$root/bin/$pf/tsv-to-ansi-table"
+    if [[ -e "$selected" || -L "$selected" ]]; then
+        [[ -L "$selected" && "$(readlink "$selected")" == /nix/store/* ]] || { echo "table: refusing unrecognized output selection: $selected" >&2; exit 1; }
+    fi
+    for command in table tsv-to-ansi-table; do
+        entrypoint="$root/bin/$pf/$command"
+        if [[ -e "$entrypoint" || -L "$entrypoint" ]]; then
+            [[ -L "$entrypoint" && "$(readlink "$entrypoint")" == "../../.nix-out/$pf/release/bin/$command" ]] || { echo "table: refusing unrecognized command: $entrypoint" >&2; exit 1; }
+        fi
+    done
+    tmp=$(mktemp -d "$root/.nix-out/$pf/.candidate.XXXXXXXX")
+    nix build --out-link "$tmp/output" ".#packages.$system.default"
+    for command in table tsv-to-ansi-table; do
+        file -Lb "$tmp/output/bin/$command" | grep -Eq "$pattern" || { echo "table: $command executable header does not match $pf" >&2; exit 1; }
+    done
+    if [[ $pf == "$host" ]]; then
+        "$tmp/output/bin/table" --about | grep -Fq "PF=$pf" || { echo 'table: executable target does not match host' >&2; exit 1; }
+    fi
+    # Rename is atomic even when the old selection is a symlink to a directory.
+    perl -e 'rename($ARGV[0], $ARGV[1]) or die "rename: $!\n"' "$tmp/output" "$selected"
+    if [[ ! -L "$entry" ]]; then ln -s "../../.nix-out/$pf/release/bin/table" "$entry"; fi
+    if [[ ! -L "$legacy" ]]; then ln -s "../../.nix-out/$pf/release/bin/tsv-to-ansi-table" "$legacy"; fi
+    printf 'Published %s\n' "$entry"
+)
+build_one "$host"
+if ((all_platforms)); then
+    for target in linux-amd64 linux-arm64 macos-arm64; do
+        if [[ $target != "$host" ]]; then build_one "$target"; fi
+    done
 fi
-if [[ -e "$entry" || -L "$entry" ]]; then
-    [[ -L "$entry" && "$(readlink "$entry")" == "../../.nix-out/$pf/release/bin/table" ]] || { echo "table: refusing unrecognized command: $entry" >&2; exit 1; }
-fi
-if [[ -e "$legacy" || -L "$legacy" ]]; then
-    [[ -L "$legacy" && "$(readlink "$legacy")" == "../../.nix-out/$pf/release/bin/tsv-to-ansi-table" ]] || { echo "table: refusing unrecognized command: $legacy" >&2; exit 1; }
-fi
-tmp=$(mktemp -d "$root/.nix-out/$pf/.candidate.XXXXXXXX")
-nix build --out-link "$tmp/output" .#default
-file -Lb "$tmp/output/bin/table" | grep -Eq "$pattern" || { echo 'table: executable header does not match host' >&2; exit 1; }
-file -Lb "$tmp/output/bin/tsv-to-ansi-table" | grep -Eq "$pattern" || { echo 'table: legacy executable header does not match host' >&2; exit 1; }
-"$tmp/output/bin/table" --about | grep -Fq "PF=$pf" || { echo 'table: executable target does not match host' >&2; exit 1; }
-# Rename is atomic even when the old selection is a symlink to a directory.
-perl -e 'rename($ARGV[0], $ARGV[1]) or die "rename: $!\n"' "$tmp/output" "$selected"
-if [[ ! -L "$entry" ]]; then ln -s "../../.nix-out/$pf/release/bin/table" "$entry"; fi
-if [[ ! -L "$legacy" ]]; then ln -s "../../.nix-out/$pf/release/bin/tsv-to-ansi-table" "$legacy"; fi
-printf 'Published %s\n' "$entry"

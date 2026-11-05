@@ -6,7 +6,7 @@ intermediate representation](docs/intermediate-format.md). ASCII and ANSI visual
 is supported for a conservative subset and requires explicit loss acceptance.
 
 Build with `./build` and run the complete current suite with `./test`. Both
-require Nix. The build publishes a command in `bin/<PF>/`; on Linux x86-64:
+require Nix. The build publishes commands in `bin/<PF>/`; on Linux x86-64:
 
 ```sh
 printf 'name,count\nAlice,2\n' | bin/linux-amd64/table --from csv --to markdown
@@ -15,10 +15,18 @@ printf 'name,count\nAlice,2\n' | bin/linux-amd64/table --from csv --to markdown
 The build also publishes `bin/<PF>/tsv-to-ansi-table`, the pinned predecessor's
 original command, for existing scripts and its fixed-width streaming mode.
 
+`./build --all-platforms` builds and publishes each currently declared Nix
+platform, using a suitable native or remote builder; it stops on the first
+failure. `--all-implementations` selects the sole Rust implementation, and
+`--all` combines both scopes. A foreign build is checked by executable header;
+native execution remains a separate qualification. Windows packages are not
+declared yet.
+
 The current host build is dynamically linked to its Nix store runtime and is
-not a standalone distribution. Native build and test have been exercised on
-Linux x86-64 only. The flake declares Linux ARM64 and macOS ARM64 packages;
-those targets have not yet been qualified. Windows packaging remains open.
+not a standalone distribution. Native Nix build and tests have been exercised on Linux x86-64 and macOS
+ARM64. Publication through `./build` has been exercised on Linux x86-64.
+The Linux ARM64 package evaluates but has not been built or run here. Windows
+packaging remains open.
 
 Both formats must be specified: `csv`, `tsv`, `markdown`, `ir`, `ascii`, or `ansi`. CSV and TSV
 treat the first row as a header by default; `--no-header` treats it as data.
