@@ -9,7 +9,10 @@ const UNICODE: Glyphs = Glyphs { top: ['┌', '┬', '┐'], middle: ['├', '�
 fn custom(spec: &str) -> Result<Glyphs, &'static str> {
     let chars: Vec<char> = spec.split(',').map(|part| {
         let mut c = part.chars();
-        match (c.next(), c.next()) { (Some(ch), None) if ch.is_ascii_punctuation() && ch != ',' => Ok(ch), _ => Err("custom visual glyphs must be single ASCII punctuation characters other than comma") }
+        match (c.next(), c.next()) {
+            (Some(ch), None) if ch != ',' && !ch.is_whitespace() && !unsafe_control(ch) && display_width(part) == 1 => Ok(ch),
+            _ => Err("custom visual glyphs must be single, safe, one-cell non-whitespace characters other than comma"),
+        }
     }).collect::<Result<_, _>>()?;
     if chars.len() != 11 { return Err("custom visual glyphs require 11 comma-separated characters"); }
     let glyphs = Glyphs { top: [chars[0], chars[1], chars[2]], middle: [chars[3], chars[4], chars[5]], bottom: [chars[6], chars[7], chars[8]], horizontal: chars[9], vertical: chars[10] };

@@ -86,8 +86,8 @@ row separators are errors. A separator after the first row marks a header; its
 absence means no header. In ANSI mode, SGR color sequences are discarded; other
 escape sequences are rejected. ASCII mode rejects all escape sequences.
 
-Custom input borders can be specified as 11 comma-separated single ASCII
-punctuation glyphs (other than comma), in this order: top left, top join, top
+Custom input borders can be specified as 11 comma-separated single, safe,
+one-cell Unicode characters (excluding whitespace and comma), in this order: top left, top join, top
 right, middle left, middle join, middle right, bottom left, bottom join, bottom
 right, horizontal, vertical. For example, `--visual-glyphs '*,*,*,*,*,*,*,*,*,~,!'`.
 Horizontal, vertical and junction glyphs must be distinct from one another.

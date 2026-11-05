@@ -39,3 +39,14 @@ fn validates_wide_and_combining_graphemes_by_display_width() {
     let unsafe_text = "┌───┐\n│ \u{202e}x │\n└───┘\n";
     assert!(parse(unsafe_text, true, None).is_err());
 }
+
+#[test]
+fn custom_unicode_and_letter_glyphs_are_checked_by_display_width() {
+    let rounded = "╭───╮\n│ x │\n╰───╯\n";
+    let glyphs = "╭,┬,╮,├,┼,┤,╰,┴,╯,─,│";
+    assert_eq!(parse(rounded, true, Some(glyphs)).unwrap().rows, vec![vec!["x"]]);
+    let letters = "A---C\n! x !\nG---I\n";
+    let glyphs = "A,B,C,D,E,F,G,H,I,-,!";
+    assert_eq!(parse(letters, true, Some(glyphs)).unwrap().rows, vec![vec!["x"]]);
+    assert!(parse(rounded, true, Some("界,┬,╮,├,┼,┤,╰,┴,╯,─,│")).is_err());
+}
