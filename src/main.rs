@@ -48,6 +48,10 @@ fn run() -> Result<(), String> {
         let color = auto_color();
         visual_options.extend(["--color".into(), if color { "always" } else { "never" }.into()]);
     }
+    if from == "tsv" && visual {
+        eprintln!("table: visual output may clip, pad, or sanitize cell contents");
+        return table::visual::render_tsv(to == "ascii", header, &visual_options);
+    }
     let mut input = Vec::new();
     io::stdin().read_to_end(&mut input).map_err(|e| e.to_string())?;
     let table = match from.as_str() {

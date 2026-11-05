@@ -51,10 +51,12 @@ accepted. `TSV_TO_ANSI_TABLE_GLYPHS` retains the predecessor's documented
 custom-glyph syntax. Display formats are lossy: cells may be clipped, padded
 or sanitized. Embedded tab and line breaks become replacement characters, and
 other terminal controls are sanitized by the renderer. A warning accompanies
-visual output. The outer converter buffers input and rendered output, so the
-predecessor's fixed-width streaming behavior is not yet exposed. The renderer
-sees a pipe, so it uses `COLUMNS` or its 80-column fallback unless you specify
-`--terminal-width`; parent-terminal width detection remains open.
+visual output. For TSV input the converter connects the predecessor directly to stdin and
+stdout; when all widths are fixed, it streams rows before EOF. A malformed
+late row may follow output already written. Other input formats buffer input
+and rendered output. For those formats the renderer sees a pipe, so it uses
+`COLUMNS` or its 80-column fallback unless you specify `--terminal-width`;
+parent-terminal width detection remains open.
 
 Visual input requires `--allow-lossy`, because padding is stripped and prior
 clipping or replacement cannot be undone. For example:

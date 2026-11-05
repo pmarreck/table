@@ -3,6 +3,17 @@ use std::io::Write;
 use std::process::{Command, Stdio};
 use std::thread;
 
+/// The predecessor can consume TSV directly and stream fixed-width layouts.
+pub fn render_tsv(ascii: bool, header: bool, options: &[String]) -> Result<(), String> {
+    let renderer = option_env!("TABLE_RENDERER").ok_or("renderer not configured at build time")?;
+    let mut command = Command::new(renderer);
+    if !header { command.arg("--no-header"); }
+    if ascii { command.arg("--ascii"); }
+    let status = command.args(options).stdin(Stdio::inherit()).stdout(Stdio::inherit())
+        .stderr(Stdio::inherit()).status().map_err(|e| format!("cannot start renderer: {e}"))?;
+    if status.success() { Ok(()) } else { Err(format!("renderer exited with {status}")) }
+}
+
 /// Delegate display layout and sanitization to the pinned predecessor renderer.
 pub fn render(table: &Table, ascii: bool, options: &[String]) -> Result<Vec<u8>, String> {
     table.validate().map_err(str::to_owned)?;

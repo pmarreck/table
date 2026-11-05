@@ -82,3 +82,33 @@ fn unicode_visual_output_can_be_read_when_not_clipped() {
     assert!(restored.status.success(), "{}", String::from_utf8_lossy(&restored.stderr));
     assert_eq!(restored.stdout, source);
 }
+
+#[test]
+fn fixed_width_tsv_visual_output_streams_before_eof() {
+    use std::io::{BufRead, BufReader};
+    use std::sync::mpsc;
+    use std::time::Duration;
+    let mut child = Command::new(env!("CARGO_BIN_EXE_table"))
+        .args(["--from", "tsv", "--to", "ascii", "--widths", "5,5", "--color", "never"])
+        .stdin(Stdio::piped()).stdout(Stdio::piped()).stderr(Stdio::piped()).spawn().unwrap();
+    let mut stdin = child.stdin.take().unwrap();
+    let stdout = child.stdout.take().unwrap();
+    let (tx, rx) = mpsc::channel();
+    let reader = std::thread::spawn(move || {
+        let mut line = String::new();
+        let mut reader = BufReader::new(stdout);
+        let result = reader.read_line(&mut line);
+        let _ = tx.send((result, line));
+        let _ = std::io::copy(&mut reader, &mut std::io::sink());
+    });
+    stdin.write_all(b"Name\tCount\nAlice\t12\n").unwrap();
+    let observed = rx.recv_timeout(Duration::from_secs(10));
+    if observed.is_err() { child.kill().unwrap(); }
+    drop(stdin);
+    let status = child.wait().unwrap();
+    reader.join().unwrap();
+    let (result, line) = observed.expect("no output before EOF");
+    assert!(result.unwrap() > 0);
+    assert!(line.starts_with('+'));
+    assert!(status.success());
+}
