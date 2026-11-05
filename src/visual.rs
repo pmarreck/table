@@ -5,8 +5,11 @@ use std::thread;
 
 fn renderer_path() -> Result<std::path::PathBuf, String> {
     let executable = std::env::current_exe().map_err(|e| format!("cannot locate table executable: {e}"))?;
-    let root = executable.parent().and_then(std::path::Path::parent).ok_or("cannot locate installation directory")?;
+    let directory = executable.parent().ok_or("cannot locate executable directory")?;
+    let root = directory.parent().ok_or("cannot locate installation directory")?;
     let name = if cfg!(windows) { "tsv-to-ansi-table.exe" } else { "tsv-to-ansi-table" };
+    let adjacent = directory.join("libexec").join(name);
+    if adjacent.is_file() { return Ok(adjacent); }
     let bundled = root.join("libexec").join(name);
     if bundled.is_file() { return Ok(bundled); }
     option_env!("TABLE_RENDERER").map(std::path::PathBuf::from).ok_or_else(|| "renderer not configured at build time".into())

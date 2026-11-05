@@ -3,24 +3,84 @@ set -euo pipefail
 cd "$(dirname "$0")"
 root=$PWD
 all_platforms=0
+target_override=''
 if [[ ${1:-} == canonize ]]; then
     [[ $# == 2 && $2 == rust ]] || { echo 'table: only the rust implementation is available' >&2; exit 2; }
     echo 'table: rust is the only implementation'
     exit 0
 fi
-for arg in "$@"; do
+while (($#)); do
+    arg=$1
+    shift
     case "$arg" in
         --all-impls|--all-implementations) ;;
         --all-plats|--all-platforms|--all) all_platforms=1 ;;
+        --platform) [[ $# -gt 0 && -n $1 ]] || { echo 'table: --platform requires a value' >&2; exit 2; }; target_override=$1; shift ;;
         *) echo "table: unknown build option: $arg" >&2; exit 2 ;;
     esac
 done
+if [[ -n "$target_override" && $all_platforms == 1 ]]; then echo 'table: --platform and --all-platforms cannot be combined' >&2; exit 2; fi
 case "$(uname -s):$(uname -m)" in
     Linux:x86_64|Linux:amd64) host=linux-amd64 ;;
     Linux:aarch64|Linux:arm64) host=linux-arm64 ;;
     Darwin:arm64|Darwin:aarch64) host=macos-arm64 ;;
     *) echo 'table: unsupported build host' >&2; exit 1 ;;
 esac
+build_windows() (
+    set -euo pipefail
+    pf=mswin-amd64
+    mkdir -p "$root/.nix-out/$pf" "$root/bin"
+    lock="$root/.nix-out/$pf/.publish-lock"
+    if ! mkdir "$lock" 2>/dev/null; then echo "table: publication is locked: $lock" >&2; exit 1; fi
+    tmp='' stage='' backup='' installed=0 committed=0
+    entry="$root/bin/$pf"
+    selected="$root/.nix-out/$pf/release"
+    rename_path() { perl -e 'rename($ARGV[0], $ARGV[1]) or die "rename: $!\n"' "$1" "$2"; }
+    cleanup() {
+        if (( !committed )); then
+            if (( installed )); then rename_path "$entry" "$stage" || echo "table: could not move failed publication: $entry" >&2; fi
+            if [[ -n "$backup" && -d "$backup" && ! -e "$entry" ]]; then rename_path "$backup" "$entry" || echo "table: restore previous publication from $backup" >&2; fi
+        fi
+        if [[ -n "$stage" && -d "$stage" ]]; then rm -r -- "$stage"; fi
+        if [[ -n "$tmp" && -d "$tmp" ]]; then if [[ -L "$tmp/output" ]]; then unlink "$tmp/output"; fi; rmdir "$tmp" 2>/dev/null || true; fi
+        rmdir "$lock" 2>/dev/null || true
+    }
+    trap cleanup EXIT
+    if [[ -e "$selected" || -L "$selected" ]]; then
+        [[ -L "$selected" && "$(readlink "$selected")" == /nix/store/* ]] || { echo "table: refusing unrecognized output selection: $selected" >&2; exit 1; }
+    fi
+    if [[ -e "$entry" || -L "$entry" ]]; then
+        [[ -d "$entry" && ! -L "$entry" && -f "$entry/.table-publication" && ! -L "$entry/.table-publication" && "$(cat "$entry/.table-publication")" == 'table/windows-release/v1' ]] || { echo "table: refusing unrecognized directory: $entry" >&2; exit 1; }
+        for path in table.exe tsv-to-ansi-table.exe libexec/tsv-to-ansi-table.exe; do
+            [[ -f "$entry/$path" && ! -L "$entry/$path" ]] || { echo "table: refusing unrecognized publication: $entry/$path" >&2; exit 1; }
+        done
+        [[ -d "$entry/libexec" && ! -L "$entry/libexec" ]] || { echo "table: refusing unrecognized libexec directory" >&2; exit 1; }
+        while IFS= read -r -d '' path; do
+            case "${path#"$entry"/}" in .table-publication|table.exe|tsv-to-ansi-table.exe|libexec|libexec/tsv-to-ansi-table.exe) ;; *) echo "table: refusing unknown file: $path" >&2; exit 1 ;; esac
+        done < <(find "$entry" -mindepth 1 -print0)
+    fi
+    tmp=$(mktemp -d "$root/.nix-out/$pf/.candidate.XXXXXXXX")
+    nix build --out-link "$tmp/output" '.#packages.x86_64-linux.windows-amd64-cross'
+    for command in table.exe tsv-to-ansi-table.exe; do
+        file -Lb "$tmp/output/bin/$command" | grep -Eq 'PE32\+.*x86-64' || { echo "table: $command is not a Windows x86-64 executable" >&2; exit 1; }
+    done
+    stage=$(mktemp -d "$root/bin/.mswin-amd64-candidate.XXXXXXXX")
+    mkdir "$stage/libexec"
+    ALLOW_NIX_STORE_COPY='publish the declared Nix-built Windows converter' cp "$tmp/output/bin/table.exe" "$stage/table.exe"
+    ALLOW_NIX_STORE_COPY='publish the declared Nix-built Windows compatibility command' cp "$tmp/output/bin/tsv-to-ansi-table.exe" "$stage/tsv-to-ansi-table.exe"
+    ALLOW_NIX_STORE_COPY='publish the declared Nix-built Windows renderer' cp "$tmp/output/libexec/tsv-to-ansi-table.exe" "$stage/libexec/tsv-to-ansi-table.exe"
+    printf 'table/windows-release/v1\n' > "$stage/.table-publication"
+    if [[ -d "$entry" ]]; then
+        backup=$(mktemp -d "$root/.nix-out/$pf/.previous.XXXXXXXX")
+        rmdir "$backup"
+        rename_path "$entry" "$backup"
+    fi
+    rename_path "$stage" "$entry"
+    installed=1
+    rename_path "$tmp/output" "$selected"
+    committed=1
+    printf 'Published %s\n' "$entry/table.exe"
+)
 build_one() (
     set -euo pipefail
     pf=$1
@@ -64,9 +124,14 @@ build_one() (
     if [[ ! -L "$legacy" ]]; then ln -s "../../.nix-out/$pf/release/bin/tsv-to-ansi-table" "$legacy"; fi
     printf 'Published %s\n' "$entry"
 )
+if [[ -n "$target_override" ]]; then
+    if [[ $target_override == mswin-amd64 ]]; then build_windows; else build_one "$target_override"; fi
+    exit 0
+fi
 build_one "$host"
 if ((all_platforms)); then
     for target in linux-amd64 linux-arm64 macos-arm64; do
         if [[ $target != "$host" ]]; then build_one "$target"; fi
     done
+    build_windows
 fi
