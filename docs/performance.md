@@ -10,10 +10,17 @@ pinned shared profiling engine. Measurements and accepted history live outside
 the repository. A new machine is unbaselined until an owner reviews and accepts
 a specific observation; an unbaselined result is not a performance pass.
 
-This case does not yet measure the other format paths, streaming behavior,
-allocations, peak memory or residual memory. It is not yet part of `./test`;
-the complete performance gate and an independently reviewed baseline remain
-open work. Finite timing sweeps are not a proof of asymptotic complexity.
+`./mg` measures peak requested bytes, allocation count and residual requested
+bytes during the same CSV/IR cycle, using Rust's global allocator. The input
+fixture, operating-system allocations and C-library allocations are excluded;
+this is not whole-process memory coverage. A canary checks allocation,
+reallocation, retained bytes and cleanup accounting. Both probes are initially
+unbaselined and are not yet part of `./test`.
+
+These cases do not yet measure the other format paths, streaming behavior,
+whole-process memory, or the cold CLI. The complete performance gate and an
+independently reviewed baseline remain open work. Finite timing sweeps are not
+a proof of asymptotic complexity.
 
 The v2 sweep reported a shape failure at the first size transition. A separate
 reverse-order diagnostic showed a smaller transition, suggesting allocator or

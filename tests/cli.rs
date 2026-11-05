@@ -206,3 +206,14 @@ fn installed_renderer_is_selected_relative_to_executable() {
     assert!(String::from_utf8_lossy(&output.stderr).contains("cannot start renderer"));
     }
 }
+
+#[test]
+fn header_flags_are_not_silently_ignored_for_self_describing_inputs() {
+    for format in ["ir", "markdown", "ascii", "ansi"] {
+        let mut args = vec!["--from", format, "--to", "csv", "--no-header"];
+        if format == "ascii" || format == "ansi" { args.push("--allow-lossy"); }
+        let result = invoke(&args, b"");
+        assert!(!result.status.success(), "header override accepted for {format}");
+        assert!(String::from_utf8_lossy(&result.stderr).contains("apply only"));
+    }
+}

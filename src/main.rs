@@ -6,6 +6,7 @@ fn run() -> Result<(), String> {
     let mut from = None;
     let mut to = None;
     let mut header = true;
+    let mut header_explicit = false;
     let mut visual_options = Vec::new();
     let mut explicit_color = false;
     let mut allow_lossy = false;
@@ -28,8 +29,8 @@ fn run() -> Result<(), String> {
                 if key == "--color" { explicit_color = true; }
             }
             "--plain" if inline.is_none() => visual_options.push(key.to_owned()),
-            "--header" if inline.is_none() => header = true,
-            "--no-header" if inline.is_none() => header = false,
+            "--header" if inline.is_none() => { header = true; header_explicit = true; }
+            "--no-header" if inline.is_none() => { header = false; header_explicit = true; }
             "--about" if inline.is_none() => { println!("table {} — Convert tabular data; PF={}{}", env!("CARGO_PKG_VERSION"), platform(), variant()); return Ok(()); }
             "-h" | "--help" if inline.is_none() => { println!("Usage: table --from csv|tsv|markdown|ir|ascii|ansi --to csv|tsv|markdown|ir|ascii|ansi [--header|--no-header]\nVisual output: --widths, --align, --overflow, --terminal-width, --color, --plain, --decimal-separator."); return Ok(()); }
             _ => return Err(format!("unknown option: {arg}")),
@@ -39,6 +40,7 @@ fn run() -> Result<(), String> {
     let to = to.ok_or("--to is required")?;
     if !["csv", "tsv", "markdown", "ir", "ascii", "ansi"].contains(&from.as_str()) { return Err("input formats: csv, tsv, markdown, ir, ascii, ansi".into()); }
     if !["csv", "tsv", "markdown", "ir", "ascii", "ansi"].contains(&to.as_str()) { return Err("output formats: csv, tsv, markdown, ir, ascii, ansi".into()); }
+    if header_explicit && from != "csv" && from != "tsv" { return Err("--header and --no-header apply only to CSV or TSV input".into()); }
     let visual = to == "ascii" || to == "ansi";
     let visual_input = from == "ascii" || from == "ansi";
     if visual_input && !allow_lossy { return Err("visual input is lossy; pass --allow-lossy to accept padding removal and possible prior clipping".into()); }

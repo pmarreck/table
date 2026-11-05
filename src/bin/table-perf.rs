@@ -42,7 +42,10 @@ fn main() {
                 // Check all rows and bytes outside the timed region.
                 assert!(correct(&input, &output, n, rows));
             }
-            if iteration >= 3 { samples.push(elapsed.max(1)); }
+            if iteration >= 3 {
+                assert!(elapsed > 0, "clock resolution insufficient");
+                samples.push(elapsed);
+            }
         }
         let values = samples.iter().map(u128::to_string).collect::<Vec<_>>().join(",");
         rows.push(format!("{{\"size\":{n},\"samples\":{{\"wall_ns\":[{values}]}}}}"));

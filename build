@@ -28,7 +28,12 @@ case "$(uname -s):$(uname -m)" in
 esac
 build_windows() (
     set -euo pipefail
-    pf=mswin-amd64
+    pf=$1
+    case "$pf" in
+        mswin-amd64) attribute='.#packages.x86_64-linux.windows-amd64-cross'; pattern='PE32\+.*x86-64' ;;
+        mswin-arm64) attribute='.#packages.x86_64-linux.windows-arm64-cross'; pattern='PE32\+.*(ARM64|Aarch64|aarch64)' ;;
+        *) echo "table: unsupported Windows target: $pf" >&2; exit 1 ;;
+    esac
     mkdir -p "$root/.nix-out/$pf" "$root/bin"
     lock="$root/.nix-out/$pf/.publish-lock"
     if ! mkdir "$lock" 2>/dev/null; then echo "table: publication is locked: $lock" >&2; exit 1; fi
@@ -54,21 +59,33 @@ build_windows() (
         for path in table.exe tsv-to-ansi-table.exe libexec/tsv-to-ansi-table.exe; do
             [[ -f "$entry/$path" && ! -L "$entry/$path" ]] || { echo "table: refusing unrecognized publication: $entry/$path" >&2; exit 1; }
         done
+        for path in table.exe tsv-to-ansi-table.exe; do
+            cmp -s "$entry/$path" "$selected/bin/$path" || { echo "table: refusing modified publication: $entry/$path" >&2; exit 1; }
+        done
+        cmp -s "$entry/libexec/tsv-to-ansi-table.exe" "$selected/libexec/tsv-to-ansi-table.exe" || { echo "table: refusing modified renderer: $entry/libexec/tsv-to-ansi-table.exe" >&2; exit 1; }
+        notice="$entry/THIRD_PARTY_LICENSES.txt"
+        selected_notice="$selected/share/licenses/table/THIRD_PARTY_LICENSES.txt"
+        if [[ -f "$selected_notice" ]]; then
+            [[ -f "$notice" && ! -L "$notice" ]] && cmp -s "$notice" "$selected_notice" || { echo "table: refusing modified license notices: $notice" >&2; exit 1; }
+        elif [[ -e "$notice" || -L "$notice" ]]; then
+            echo "table: refusing unknown file: $notice" >&2; exit 1
+        fi
         [[ -d "$entry/libexec" && ! -L "$entry/libexec" ]] || { echo "table: refusing unrecognized libexec directory" >&2; exit 1; }
         while IFS= read -r -d '' path; do
-            case "${path#"$entry"/}" in .table-publication|table.exe|tsv-to-ansi-table.exe|libexec|libexec/tsv-to-ansi-table.exe) ;; *) echo "table: refusing unknown file: $path" >&2; exit 1 ;; esac
+            case "${path#"$entry"/}" in .table-publication|table.exe|tsv-to-ansi-table.exe|THIRD_PARTY_LICENSES.txt|libexec|libexec/tsv-to-ansi-table.exe) ;; *) echo "table: refusing unknown file: $path" >&2; exit 1 ;; esac
         done < <(find "$entry" -mindepth 1 -print0)
     fi
     tmp=$(mktemp -d "$root/.nix-out/$pf/.candidate.XXXXXXXX")
-    nix build --out-link "$tmp/output" '.#packages.x86_64-linux.windows-amd64-cross'
+    nix build --out-link "$tmp/output" "$attribute"
     for command in table.exe tsv-to-ansi-table.exe; do
-        file -Lb "$tmp/output/bin/$command" | grep -Eq 'PE32\+.*x86-64' || { echo "table: $command is not a Windows x86-64 executable" >&2; exit 1; }
+        file -Lb "$tmp/output/bin/$command" | grep -Eq "$pattern" || { echo "table: $command executable header does not match $pf" >&2; exit 1; }
     done
-    stage=$(mktemp -d "$root/bin/.mswin-amd64-candidate.XXXXXXXX")
+    stage=$(mktemp -d "$root/bin/.$pf-candidate.XXXXXXXX")
     mkdir "$stage/libexec"
     ALLOW_NIX_STORE_COPY='publish the declared Nix-built Windows converter' cp "$tmp/output/bin/table.exe" "$stage/table.exe"
     ALLOW_NIX_STORE_COPY='publish the declared Nix-built Windows compatibility command' cp "$tmp/output/bin/tsv-to-ansi-table.exe" "$stage/tsv-to-ansi-table.exe"
     ALLOW_NIX_STORE_COPY='publish the declared Nix-built Windows renderer' cp "$tmp/output/libexec/tsv-to-ansi-table.exe" "$stage/libexec/tsv-to-ansi-table.exe"
+    ALLOW_NIX_STORE_COPY='publish license notices from the declared Nix output' cp "$tmp/output/share/licenses/table/THIRD_PARTY_LICENSES.txt" "$stage/THIRD_PARTY_LICENSES.txt"
     printf 'table/windows-release/v1\n' > "$stage/.table-publication"
     if [[ -d "$entry" ]]; then
         backup=$(mktemp -d "$root/.nix-out/$pf/.previous.XXXXXXXX")
@@ -125,7 +142,7 @@ build_one() (
     printf 'Published %s\n' "$entry"
 )
 if [[ -n "$target_override" ]]; then
-    if [[ $target_override == mswin-amd64 ]]; then build_windows; else build_one "$target_override"; fi
+    case "$target_override" in mswin-amd64|mswin-arm64) build_windows "$target_override" ;; *) build_one "$target_override" ;; esac
     exit 0
 fi
 build_one "$host"
@@ -133,5 +150,6 @@ if ((all_platforms)); then
     for target in linux-amd64 linux-arm64 macos-arm64; do
         if [[ $target != "$host" ]]; then build_one "$target"; fi
     done
-    build_windows
+    build_windows mswin-amd64
+    build_windows mswin-arm64
 fi

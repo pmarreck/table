@@ -15,8 +15,8 @@ printf 'name,count\nAlice,2\n' | bin/linux-amd64/table --from csv --to markdown
 The build also publishes `bin/<PF>/tsv-to-ansi-table`, the pinned predecessor's
 original command, for existing scripts and its fixed-width streaming mode.
 
-`./build --all-platforms` builds and publishes the three declared Unix targets
-and Windows x86-64, using a suitable native or remote builder. It stops on the
+`./build --all-platforms` builds and publishes Linux x86-64 and ARM64, macOS
+ARM64, and Windows x86-64 and ARM64, using a suitable native or remote builder. It stops on the
 first failure. `--all-implementations` selects the sole Rust implementation, and
 `--all` combines both scopes. A foreign build is checked by executable header;
 native execution remains a separate qualification. `./build --platform PF`
@@ -27,13 +27,14 @@ not a standalone distribution. Native Nix build and tests have been exercised
 on Linux x86-64 and macOS ARM64. Publication through `./build` has been
 exercised on Linux x86-64. The Linux ARM64 converter and renderer have been cross-built and their
 executable headers inspected; native runtime testing remains open. The
-cross-build uses the predecessor's Zig renderer. The experimental
-`nix build .#windows-amd64-cross` output bundles both Windows executables and a
-renderer in `libexec` without requiring symlink support. It has been exercised
-under isolated Wine, including the published `bin/mswin-amd64` directory, but
-not on native Windows. The publisher uses regular executable files and retains
-the previous Windows publication for rollback. Windows ARM64 is not packaged:
-the pinned Nix package set marks its Rust cross target unsupported.
+cross-build uses the predecessor's Zig renderer. The Windows cross-builds bundle
+both executables and a renderer in `libexec` without requiring symlink support.
+The x86-64 bundle has been exercised under isolated Wine, including the
+published `bin/mswin-amd64` directory, but not on native Windows. The ARM64
+executables have been cross-built and identified as ARM64 PE files, but their
+UCRT linker mapping has not been tested on native Windows. The publisher uses
+regular executable files and retains the previous Windows publication for
+rollback. Bundles include dependency and Unicode license notices.
 
 Both formats must be specified: `csv`, `tsv`, `markdown`, `ir`, `ascii`, or `ansi`. CSV and TSV
 treat the first row as a header by default; `--no-header` treats it as data.
@@ -84,8 +85,9 @@ The reader accepts boxed tables with the predecessor's ASCII or Unicode border
 profiles and exact display-cell column boundaries. Unicode input uses the same
 pinned Unicode 17 grapheme and width policy as the predecessor renderer. Extra separators, inconsistent widths, missing borders and ambiguous
 row separators are errors. A separator after the first row marks a header; its
-absence means no header. In ANSI mode, SGR color sequences are discarded; other
-escape sequences are rejected. ASCII mode rejects all escape sequences.
+absence means no header. ANSI mode discards SGR sequences consisting of ESC,
+`[`, decimal parameters separated by semicolons, and `m`; other escape forms,
+including colon-form SGR, are rejected. ASCII mode rejects all escape sequences.
 
 Custom input borders can be specified as 11 comma-separated single, safe,
 one-cell Unicode characters (excluding whitespace and comma), in this order: top left, top join, top
@@ -99,3 +101,7 @@ checks CSV against Python's standard-library parser using control characters and
 randomized cells, and runs the pinned predecessor's CLI checks for headers, options, colors, glyphs
 and fixed-width streaming against the compatibility executable. These checks
 are not a claim that visual tables recover clipped or padded source data.
+
+`./big_o` and `./mg` run the initial timing and allocation-growth probes. See
+[performance cases](docs/performance.md) for their coverage and the outstanding
+baseline and complete-suite integration work.

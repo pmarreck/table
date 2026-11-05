@@ -24,6 +24,18 @@ escapes, and ragged rows are errors. These constraints give one representation
 per valid model and make concatenation or recovery from truncation explicit
 errors rather than guesses.
 
+The round-trip argument follows from the grammar: the encoder emits each of
+the five reserved data bytes only as its distinct two-byte escape, while every
+unescaped reserved byte has exactly one structural role. Decoding therefore
+recovers each field byte in order and encounters the same field and row
+boundaries. GS occurs only before the first row, so header presence also
+survives. Conversely, accepted escapes have exactly one encoding, and accepted
+ordinary bytes and boundaries are emitted unchanged. Thus decoding an encoded
+valid model returns that model, and encoding an accepted document returns the
+same bytes. The tests include fixed wire vectors, every ASCII scalar, malformed
+escapes and structural markers; they are examples supporting this argument,
+not an exhaustive proof of every possible input length.
+
 The intermediate form preserves cell contents, header presence, row order, and
 column count. It does not encode source dialect, alignment, formatting, color or
 styling. Rendered tables may be clipped, padded or sanitized, and are not
