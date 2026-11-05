@@ -97,7 +97,15 @@ fn fixed_width_tsv_visual_output_streams_before_eof() {
     let reader = std::thread::spawn(move || {
         let mut line = String::new();
         let mut reader = BufReader::new(stdout);
-        let result = reader.read_line(&mut line);
+        let result = loop {
+            line.clear();
+            match reader.read_line(&mut line) {
+                Ok(0) => break Ok(0),
+                Ok(n) if line.contains("Alice") && line.contains("12") => break Ok(n),
+                Ok(_) => (),
+                Err(error) => break Err(error),
+            }
+        };
         let _ = tx.send((result, line));
         let _ = std::io::copy(&mut reader, &mut std::io::sink());
     });
@@ -109,6 +117,27 @@ fn fixed_width_tsv_visual_output_streams_before_eof() {
     reader.join().unwrap();
     let (result, line) = observed.expect("no output before EOF");
     assert!(result.unwrap() > 0);
-    assert!(line.starts_with('+'));
+    assert!(line.contains("Alice") && line.contains("12"));
     assert!(status.success());
+}
+
+#[test]
+fn all_format_pairs_preserve_unambiguous_unclipped_data() {
+    let csv = b"name,value\n\"A, B\",12\nZ,3\n";
+    let formats = ["csv", "tsv", "markdown", "ir", "ascii", "ansi"];
+    for from in formats {
+        let initial = invoke(&["--from", "csv", "--to", from], csv);
+        assert!(initial.status.success(), "csv -> {from}: {}", String::from_utf8_lossy(&initial.stderr));
+        for to in formats {
+            let mut args = vec!["--from", from, "--to", to];
+            if from == "ascii" || from == "ansi" { args.push("--allow-lossy"); }
+            let converted = invoke(&args, &initial.stdout);
+            assert!(converted.status.success(), "{from} -> {to}: {}", String::from_utf8_lossy(&converted.stderr));
+            let mut back = vec!["--from", to, "--to", "csv"];
+            if to == "ascii" || to == "ansi" { back.push("--allow-lossy"); }
+            let result = invoke(&back, &converted.stdout);
+            assert!(result.status.success(), "{from} -> {to} -> csv: {}", String::from_utf8_lossy(&result.stderr));
+            assert_eq!(result.stdout, csv, "{from} -> {to} -> csv");
+        }
+    }
 }
