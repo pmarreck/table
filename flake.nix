@@ -30,9 +30,10 @@
           ''}
         '';
         doCheck = runChecks;
-        nativeCheckInputs = [ pkgs.perl pkgs.file ];
+        nativeCheckInputs = [ pkgs.perl pkgs.file pkgs.python3 ];
         postCheck = ''
           bash tests/build-publication.sh
+          python3 tests/csv-oracle.py "target/${targetPkgs.stdenv.hostPlatform.rust.rustcTarget}/release/table"
           (
             cd ${renderer}
             for suite in check semantics errors equals color glyphs streaming; do
