@@ -22,6 +22,7 @@
         TABLE_RENDERER = rendererBin;
         postInstall = ''
           mkdir -p "$out/libexec"
+          mv "$out/bin/table-perf${targetPkgs.stdenv.hostPlatform.extensions.executable}" "$out/libexec/table-perf${targetPkgs.stdenv.hostPlatform.extensions.executable}"
           cp "$TABLE_RENDERER" "$out/libexec/tsv-to-ansi-table${targetPkgs.stdenv.hostPlatform.extensions.executable}"
           ${if targetPkgs.stdenv.hostPlatform.isWindows then ''
             cp "$TABLE_RENDERER" "$out/bin/tsv-to-ansi-table.exe"
@@ -44,6 +45,7 @@
         meta = { license = pkgs.lib.licenses.mit; mainProgram = "table"; };
       };
     in {
+      profiling-tool = renderer.inputs.performance-profiling.packages.${system}.default;
       default = package pkgs "${renderer.packages.${system}.rust}/bin/tsv-to-ansi-table-rust" true;
     } // pkgs.lib.optionalAttrs (system == "x86_64-linux") {
       linux-arm64-cross = package pkgs.pkgsCross.aarch64-multiplatform "${renderer.packages.${system}.linux-arm64}/bin/tsv-to-ansi-table-zig" false;

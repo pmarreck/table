@@ -192,7 +192,9 @@ fn installed_renderer_is_selected_relative_to_executable() {
     fs::create_dir(root.join("libexec")).unwrap();
     let suffix = std::env::consts::EXE_SUFFIX;
     let binary = root.join("bin").join(format!("table{suffix}"));
-    fs::copy(env!("CARGO_BIN_EXE_table"), &binary).unwrap();
+    // The Nix-built test binary is immutable here; linking avoids racing a
+    // writable copy descriptor inherited by another parallel subprocess.
+    fs::hard_link(env!("CARGO_BIN_EXE_table"), &binary).unwrap();
     // A deliberately invalid bundled renderer must be selected ahead of the
     // valid Nix build-time fallback, causing an observable launch failure.
     fs::write(root.join("libexec").join(format!("tsv-to-ansi-table{suffix}")), b"not an executable").unwrap();

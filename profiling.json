@@ -1,0 +1,10 @@
+{
+  "schema": "performance-project/v1",
+  "project": "table",
+  "history_url": "file:///var/lib/performance-profiling",
+  "identity": {"runtime": "Rust-1.97.1", "build_mode": "release", "concurrency": 1},
+  "cases": [
+    {"name": "csv-ir-1", "definition": "csv-ir-roundtrip-v3", "mode": "cg", "metric": "wall_ns", "cores": 1, "command": ["table-perf", "{case}", "{sizes}", "{seed}"], "sizes": [1024, 2048, 4096, 8192], "bounds": [1.2, 3.0]},
+    {"name": "csv-ir-12", "definition": "csv-ir-roundtrip-v3", "mode": "cg", "metric": "wall_ns", "cores": 12, "command": ["table-perf", "{case}", "{sizes}", "{seed}"], "sizes": [1024, 2048, 4096, 8192], "bounds": [1.2, 3.0]}
+  ]
+}
