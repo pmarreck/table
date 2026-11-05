@@ -104,6 +104,7 @@ randomized cells, and runs the pinned predecessor's CLI checks for headers, opti
 and fixed-width streaming against the compatibility executable. These checks
 are not a claim that visual tables recover clipped or padded source data.
 
-`./big_o` and `./mg` run the initial timing and allocation-growth probes. See
+`./big_o`, `./mg` and `./bm` run the initial growth, allocation and cold-start
+probes. See
 [performance cases](docs/performance.md) for their coverage and the outstanding
 baseline and complete-suite integration work.

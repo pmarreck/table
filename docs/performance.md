@@ -18,7 +18,7 @@ reallocation, retained bytes and cleanup accounting. Both probes are initially
 unbaselined and are not yet part of `./test`.
 
 These cases do not yet measure the other format paths, streaming behavior,
-whole-process memory, or the cold CLI. The complete performance gate and an
+whole-process memory, or CLI startup independently of its adapter. The complete performance gate and an
 independently reviewed baseline remain open work. Finite timing sweeps are not
 a proof of asymptotic complexity.
 
@@ -28,3 +28,11 @@ warmup state depends on sweep order. The v3 steady-state case warms the largest
 fixture before every sweep and warms each size separately; it does not erase the
 v2 failure or measure cold, single-command behavior. Cold-start and allocation
 growth still require separate cases.
+
+`./bm` currently measures a cold adapter process launching a fresh `table`
+process, converting one CSV row to TSV and verifying its complete output before
+announcing readiness. The reported startup interval includes the adapter and
+child-process startup, conversion, verification and marker delivery; it is not
+an isolated measurement of the executable's loader alone. Single-core and
+12-core cases start five fresh processes each. Other fixed-workload timing cases
+remain to be added.

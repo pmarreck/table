@@ -62,7 +62,7 @@ EOF
         TABLE_RENDERER = rendererBin;
         postInstall = ''
           mkdir -p "$out/libexec"
-          for probe in table-perf table-memory; do
+          for probe in table-perf table-memory table-startup; do
             mv "$out/bin/$probe${targetPkgs.stdenv.hostPlatform.extensions.executable}" "$out/libexec/$probe${targetPkgs.stdenv.hostPlatform.extensions.executable}"
           done
           cp "$TABLE_RENDERER" "$out/libexec/tsv-to-ansi-table${targetPkgs.stdenv.hostPlatform.extensions.executable}"
@@ -90,6 +90,8 @@ EOF
         installCheckPhase = ''
           test -s "$out/share/licenses/table/THIRD_PARTY_LICENSES.txt"
           grep -q 'Unicode data license' "$out/share/licenses/table/THIRD_PARTY_LICENSES.txt"
+          "$out/libexec/table-startup" startup-1 1 check > "$TMPDIR/startup-check.out"
+          grep -q '^performance-ready/v1$' "$TMPDIR/startup-check.out"
         '';
         meta = {
           license = pkgs.lib.licenses.mit;
@@ -148,6 +150,7 @@ EOF
           cp "$TABLE_RENDERER" "$out/libexec/tsv-to-ansi-table.exe"
           cp target/aarch64-pc-windows-gnullvm/release/table-perf.exe "$out/libexec/table-perf.exe"
           cp target/aarch64-pc-windows-gnullvm/release/table-memory.exe "$out/libexec/table-memory.exe"
+          cp target/aarch64-pc-windows-gnullvm/release/table-startup.exe "$out/libexec/table-startup.exe"
           ${notices}
           runHook postInstall
         '';
