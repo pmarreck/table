@@ -1,0 +1,7 @@
+AGENTS.md
+inbox/
+/result
+/result-*
+/target/
+/bin/*/
+/.nix-out/

@@ -1,0 +1,33 @@
+#!/usr/bin/env bash
+set -euo pipefail
+cd "$(dirname "$0")"
+root=$PWD
+if (($#)); then echo 'table: ./build currently accepts no arguments' >&2; exit 2; fi
+case "$(uname -s):$(uname -m)" in
+    Linux:x86_64|Linux:amd64) pf=linux-amd64; pattern='ELF 64-bit.*x86-64' ;;
+    Linux:aarch64|Linux:arm64) pf=linux-arm64; pattern='ELF 64-bit.*(ARM aarch64|aarch64)' ;;
+    Darwin:arm64|Darwin:aarch64) pf=macos-arm64; pattern='Mach-O 64-bit.*arm64' ;;
+    *) echo 'table: unsupported build host' >&2; exit 1 ;;
+esac
+mkdir -p ".nix-out/$pf" "bin/$pf"
+lock="$root/.nix-out/$pf/.publish-lock"
+if ! mkdir "$lock" 2>/dev/null; then echo "table: publication is locked: $lock" >&2; exit 1; fi
+tmp=''
+cleanup() { if [[ -n "$tmp" && -d "$tmp" ]]; then if [[ -L "$tmp/output" ]]; then unlink "$tmp/output"; fi; rmdir "$tmp" 2>/dev/null || true; fi; rmdir "$lock" 2>/dev/null || true; }
+trap cleanup EXIT
+selected="$root/.nix-out/$pf/release"
+entry="$root/bin/$pf/table"
+if [[ -e "$selected" || -L "$selected" ]]; then
+    [[ -L "$selected" && "$(readlink "$selected")" == /nix/store/* ]] || { echo "table: refusing unrecognized output selection: $selected" >&2; exit 1; }
+fi
+if [[ -e "$entry" || -L "$entry" ]]; then
+    [[ -L "$entry" && "$(readlink "$entry")" == "../../.nix-out/$pf/release/bin/table" ]] || { echo "table: refusing unrecognized command: $entry" >&2; exit 1; }
+fi
+tmp=$(mktemp -d "$root/.nix-out/$pf/.candidate.XXXXXXXX")
+nix build --out-link "$tmp/output" .#default
+file -Lb "$tmp/output/bin/table" | grep -Eq "$pattern" || { echo 'table: executable header does not match host' >&2; exit 1; }
+"$tmp/output/bin/table" --about | grep -Fq "PF=$pf" || { echo 'table: executable target does not match host' >&2; exit 1; }
+# Rename is atomic even when the old selection is a symlink to a directory.
+perl -e 'rename($ARGV[0], $ARGV[1]) or die "rename: $!\n"' "$tmp/output" "$selected"
+if [[ ! -L "$entry" ]]; then ln -s "../../.nix-out/$pf/release/bin/table" "$entry"; fi
+printf 'Published %s\n' "$entry"
