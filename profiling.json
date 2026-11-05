@@ -4,12 +4,12 @@
   "history_url": "file:///var/lib/performance-profiling",
   "identity": {"runtime": "Rust-1.97.1", "build_mode": "release", "concurrency": 1},
   "cases": [
-    {"name": "csv-ir-1", "definition": "csv-ir-roundtrip-v4", "mode": "cg", "metric": "wall_ns", "cores": 1, "command": ["table-perf", "{case}", "{sizes}", "{seed}"], "sizes": [1024, 2048, 4096, 8192], "bounds": [1.2, 3.0]},
-    {"name": "csv-ir-12", "definition": "csv-ir-roundtrip-v4", "mode": "cg", "metric": "wall_ns", "cores": 12, "command": ["table-perf", "{case}", "{sizes}", "{seed}"], "sizes": [1024, 2048, 4096, 8192], "bounds": [1.2, 3.0]},
-    {"name": "markdown-1", "definition": "markdown-roundtrip-v1", "mode": "cg", "metric": "wall_ns", "cores": 1, "command": ["table-perf", "{case}", "{sizes}", "{seed}"], "sizes": [1024, 2048, 4096, 8192], "bounds": [1.2, 3.0]},
-    {"name": "markdown-12", "definition": "markdown-roundtrip-v1", "mode": "cg", "metric": "wall_ns", "cores": 12, "command": ["table-perf", "{case}", "{sizes}", "{seed}"], "sizes": [1024, 2048, 4096, 8192], "bounds": [1.2, 3.0]},
-    {"name": "visual-input-1", "definition": "visual-input-v1", "mode": "cg", "metric": "wall_ns", "cores": 1, "command": ["table-perf", "{case}", "{sizes}", "{seed}"], "sizes": [1024, 2048, 4096, 8192], "bounds": [1.2, 3.0]},
-    {"name": "visual-input-12", "definition": "visual-input-v1", "mode": "cg", "metric": "wall_ns", "cores": 12, "command": ["table-perf", "{case}", "{sizes}", "{seed}"], "sizes": [1024, 2048, 4096, 8192], "bounds": [1.2, 3.0]},
+    {"name": "csv-ir-1", "definition": "csv-ir-roundtrip-v5", "mode": "cg", "metric": "wall_ns", "cores": 1, "command": ["table-perf", "{case}", "{sizes}", "{seed}"], "sizes": [1024, 2048, 4096, 8192], "bounds": [1.2, 3.0]},
+    {"name": "csv-ir-12", "definition": "csv-ir-roundtrip-v5", "mode": "cg", "metric": "wall_ns", "cores": 12, "command": ["table-perf", "{case}", "{sizes}", "{seed}"], "sizes": [1024, 2048, 4096, 8192], "bounds": [1.2, 3.0]},
+    {"name": "markdown-1", "definition": "markdown-roundtrip-v2", "mode": "cg", "metric": "wall_ns", "cores": 1, "command": ["table-perf", "{case}", "{sizes}", "{seed}"], "sizes": [1024, 2048, 4096, 8192], "bounds": [1.2, 3.0]},
+    {"name": "markdown-12", "definition": "markdown-roundtrip-v2", "mode": "cg", "metric": "wall_ns", "cores": 12, "command": ["table-perf", "{case}", "{sizes}", "{seed}"], "sizes": [1024, 2048, 4096, 8192], "bounds": [1.2, 3.0]},
+    {"name": "visual-input-1", "definition": "visual-input-v2", "mode": "cg", "metric": "wall_ns", "cores": 1, "command": ["table-perf", "{case}", "{sizes}", "{seed}"], "sizes": [1024, 2048, 4096, 8192], "bounds": [1.2, 3.0]},
+    {"name": "visual-input-12", "definition": "visual-input-v2", "mode": "cg", "metric": "wall_ns", "cores": 12, "command": ["table-perf", "{case}", "{sizes}", "{seed}"], "sizes": [1024, 2048, 4096, 8192], "bounds": [1.2, 3.0]},
     {"name": "csv-ir-memory", "definition": "csv-ir-rust-allocations-v1", "mode": "mg", "metric": "peak_bytes", "cores": 1, "command": ["table-memory", "{case}", "{sizes}", "{seed}"], "sizes": [1024, 2048, 4096, 8192], "bounds": [1.8, 2.2], "residual_allowance": 0},
     {"name": "startup-1", "definition": "csv-tsv-cli-startup-v1", "mode": "bm", "metric": "startup_ns", "comparison": "absolute", "ready_marker": "performance-ready/v1", "cores": 1, "command": ["table-startup", "{case}", "{sizes}", "{seed}"], "sizes": [1], "bounds": [1, 10000000000]},
     {"name": "startup-12", "definition": "csv-tsv-cli-startup-v1", "mode": "bm", "metric": "startup_ns", "comparison": "absolute", "ready_marker": "performance-ready/v1", "cores": 12, "command": ["table-startup", "{case}", "{sizes}", "{seed}"], "sizes": [1], "bounds": [1, 10000000000]}

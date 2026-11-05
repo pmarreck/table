@@ -6,6 +6,18 @@ use table::{decode, encode, parse_delimited, write_delimited};
 #[derive(Clone, Copy)]
 enum Case { CsvIr, Markdown, VisualInput }
 
+#[cfg(unix)]
+fn cpu_time() -> Option<u128> {
+    let mut time = libc::timespec { tv_sec: 0, tv_nsec: 0 };
+    // The output pointer is valid and the process CPU clock is monotonic.
+    assert_eq!(unsafe { libc::clock_gettime(libc::CLOCK_PROCESS_CPUTIME_ID, &mut time) }, 0, "process CPU clock unavailable");
+    assert!(time.tv_sec >= 0 && time.tv_nsec >= 0);
+    Some(time.tv_sec as u128 * 1_000_000_000 + time.tv_nsec as u128)
+}
+
+#[cfg(not(unix))]
+fn cpu_time() -> Option<u128> { None }
+
 fn fixture(case: Case, rows: usize) -> (String, String) {
     match case {
         Case::CsvIr => {
@@ -73,24 +85,37 @@ fn main() {
     for n in sizes {
         let (input, expected) = fixture(case, n);
         let mut samples = Vec::new();
+        let mut cpu_samples = Vec::new();
         for iteration in 0..8 {
             let mut elapsed = 0;
+            let mut cpu_elapsed = 0;
+            let mut cpu_available = false;
             for _ in 0..64 {
+                let before_cpu = cpu_time();
                 let start = Instant::now();
                 let (output, rows) = roundtrip(case, &input);
                 elapsed += start.elapsed().as_nanos();
+                if let (Some(before), Some(after)) = (before_cpu, cpu_time()) {
+                    cpu_elapsed += after.checked_sub(before).expect("process CPU clock moved backward");
+                    cpu_available = true;
+                }
                 // Check all rows and bytes outside the timed region.
                 assert!(correct(&expected, &output, n, rows));
             }
             if iteration >= 3 {
                 assert!(elapsed > 0, "clock resolution insufficient");
                 samples.push(elapsed);
+                if cpu_available {
+                    assert!(cpu_elapsed > 0, "process CPU clock resolution insufficient");
+                    cpu_samples.push(cpu_elapsed);
+                }
             }
         }
         let values = samples.iter().map(u128::to_string).collect::<Vec<_>>().join(",");
-        rows.push(format!("{{\"size\":{n},\"samples\":{{\"wall_ns\":[{values}]}}}}"));
+        let cpu = if cpu_samples.is_empty() { String::new() } else { format!(",\"cpu_ns\":[{}]", cpu_samples.iter().map(u128::to_string).collect::<Vec<_>>().join(",")) };
+        rows.push(format!("{{\"size\":{n},\"samples\":{{\"wall_ns\":[{values}]{cpu}}}}}"));
     }
-    println!("{{\"schema\":\"performance-measurement/v1\",\"correct\":true,\"build_mode\":\"release\",\"allocator_coverage\":\"not measured\",\"clock\":\"monotonic wall, sum of 64 in-process operations\",\"warmup\":\"64 full operations at largest size, then 192 at each size\",\"rows\":[{}]}}", rows.join(","));
+    println!("{{\"schema\":\"performance-measurement/v1\",\"correct\":true,\"build_mode\":\"release\",\"allocator_coverage\":\"not measured\",\"clock\":\"monotonic wall and process CPU where available; sums of 64 in-process operations\",\"warmup\":\"64 full operations at largest size, then 192 at each size\",\"rows\":[{}]}}", rows.join(","));
 }
 
 #[cfg(test)]

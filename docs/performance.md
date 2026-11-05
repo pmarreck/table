@@ -39,3 +39,10 @@ child-process startup, conversion, verification and marker delivery; it is not
 an isolated measurement of the executable's loader alone. Single-core and
 12-core cases start five fresh processes each. Other fixed-workload timing cases
 remain to be added.
+
+The v1 visual-input case reported a shape failure in the 12-core-affinity run,
+with uneven samples at 4,096 rows. A reverse-order diagnostic had a smaller
+transition; neither observation establishes the cause. The v2 cases also
+record process CPU time on Unix, outside the wall-clock interval boundaries, to
+help distinguish computation from scheduling delay. Wall time remains the gated
+metric. The v1 failure remains part of the measurement history.
