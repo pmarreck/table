@@ -14,9 +14,11 @@ printf 'name,count\nAlice,2\n' | table --to markdown
 # | Alice | 2 |
 ```
 
-This project is under active development. Rust currently provides the complete
-CLI. Zig and Roc implementations are in progress; Roc is intended to become
-the default after matching the CLI behavior and platform checks. See
+Rust, Zig, Roc and LuaJIT provide the same CLI. All four pass one shared
+acceptance suite and 496 direct output/status/error comparisons on Linux x86-64
+and macOS ARM64. Rust remains the checked-in default while broader platform
+qualification is completed. Roc is intended to become the default after that
+qualification. See
 [implementation parity](docs/implementation-parity.md).
 
 ## Build and run
@@ -33,18 +35,35 @@ original command, for existing scripts and its fixed-width streaming mode.
 
 `./build --all-platforms` builds and publishes Linux x86-64 and ARM64, macOS
 ARM64, and Windows x86-64 and ARM64, using a suitable native or remote builder. It stops on the
-first failure. `--all-implementations` selects the sole Rust implementation, and
+first failure. Native packages include all four implementations; `--all-implementations`
+builds that complete native package, and
 `--all` combines both scopes. A foreign build is checked by executable header;
 native execution remains a separate qualification. `./build --platform PF`
 selects one target.
 
-Linux outputs use static musl builds. macOS outputs use the native system
-runtime. Native Nix build and tests have been exercised
+The published default command follows `CANONICAL_IMPL`. For explicit runs, the
+Nix installation tree contains `bin/table-rust`, `bin/table-zig`, `bin/table-roc`
+and `bin/table-luajit`; for example, after `./build`:
+
+```sh
+.nix-out/linux-amd64/release/bin/table-roc --to markdown < data.csv
+```
+
+`nix build .#rust`, `.#zig`, `.#roc` and `.#luajit` also expose the corresponding
+packages. `./build canonize roc` records a selection without building or changing
+installed commands; rerun `./build` to publish it. Windows publication currently
+requires the Rust selection and refuses an unqualified alternative. Linux ARM64
+non-Rust packages require a native builder. LuaJIT includes its pinned interpreter
+and native I/O/Unicode dependency in the Nix closure; it is not a standalone
+statically linked executable.
+
+Rust, Zig and Roc Linux executables use static musl builds. LuaJIT uses its
+pinned Nix runtime. macOS outputs use the native system runtime. Native Nix build and tests have been exercised
 on Linux x86-64 and macOS ARM64. Publication through `./build` has been
 exercised on Linux x86-64. Earlier GNU Linux ARM64 converter and predecessor Zig
 renderer builds had their headers inspected and each executable
 run separately under isolated QEMU. The converter's visual path was also run
-under QEMU with an explicit emulator shim for the renderer. Native ARM64 runtime
+under QEMU with an explicit emulator shim for the renderer. Native Linux ARM64 runtime
 testing, including the current musl ARM64 output, remains open. The Windows cross-builds bundle
 both executables and a renderer in `libexec` without requiring symlink support.
 An earlier x86-64 bundle was exercised under isolated Wine, including the
@@ -139,27 +158,51 @@ are not a claim that visual tables recover clipped or padded source data.
 
 ## Tests and benchmarks
 
-`./test` is the complete current correctness suite, built through Nix. The CI
+`./test` is the complete current correctness suite, built through Nix. Every
+implementation runs the same 12 CLI integration tests, format-pair checks,
+autodetection checks, external Python CSV and GFM Markdown oracles, and benchmark
+fixture checks. The direct parity corpus compares stdout, stderr and exit status
+for 496 cases, including malformed input and randomized quoted/control-character
+cells. `--about` is checked separately because ABI/runtime metadata can differ.
+Finite tests establish agreement for those cases, not a universal proof. The CI
 manifest builds the Linux checks, Linux ARM64 cross target, macOS ARM64 package
 and both Windows targets from the exact pushed commit. Native Windows and Linux
 ARM64 runtime qualification remains open; cross-builds and emulator results are
 separate evidence.
 
-`./bm` compares the same six CLI workloads across Rust, Zig and Roc, with one-core
-and 12-core affinity cases. It requires every selected executable and checks
-complete output before recording timings. Until the Zig and Roc CLIs are
-complete, select the working subset explicitly:
+`./bm` measures the same six workloads for all four implementations with
+one-core and 12-core affinity settings. It requires every selected executable,
+checks complete output before accepting each timing, and records binary hashes.
+Use `./bm --implementation rust|zig|roc|luajit` for an explicit subset. The
+`TABLE_BENCHMARK_RUST`, `TABLE_BENCHMARK_ZIG`, `TABLE_BENCHMARK_ROC` and
+`TABLE_BENCHMARK_LUAJIT` variables can select other optimized executables.
 
-```sh
-./bm --implementation rust
-```
+### Preliminary measurements
 
-To benchmark other optimized executables, set `TABLE_BENCHMARK_ZIG` and
-`TABLE_BENCHMARK_ROC` to their paths. The full suite refuses to silently skip a
-missing implementation. New measurements remain unbaselined until reviewed.
-`./big_o` and `./mg` measure input growth and Rust allocator usage. See
-[performance cases](docs/performance.md) for measurement boundaries and remaining
-gate integration work.
+Measured on Linux x86-64 at source commit `50e6ab6`, seed `20261106`, with the
+pinned optimized toolchains. Each cell is the median milliseconds for **one-core /
+12-core affinity**, from five fresh CLI processes. Startup converts one data row;
+the other workloads use 4,096 data rows. Timing includes process launch, conversion,
+pipe transfer and exit; fixture construction and verification are excluded.
+
+| Workload | Rust | Zig | Roc | LuaJIT |
+|---|---:|---:|---:|---:|
+| Startup | 1.57 / 0.60 | 1.53 / 0.51 | 1.57 / 0.66 | 2.72 / 2.10 |
+| CSV → TSV | 3.14 / 2.13 | 2.52 / 1.63 | 6.34 / 4.92 | 12.87 / 14.01 |
+| CSV → IR | 3.06 / 1.95 | 2.48 / 1.57 | 4.77 / 3.69 | 13.36 / 12.65 |
+| Markdown → CSV | 3.94 / 2.67 | 3.64 / 2.75 | 11.44 / 10.30 | 56.61 / 57.95 |
+| ASCII → CSV | 5.79 / 4.78 | 4.40 / 3.22 | 39.93 / 39.49 | 50.54 / 49.39 |
+| Autodetect CSV | 6.08 / 4.86 | 3.86 / 3.06 | 10.75 / 9.47 | 26.30 / 29.15 |
+
+All 48 observations are **UNBASELINED**. The Rust and Roc CSV → TSV 12-core
+cases used the runner's one permitted retry after sample variation; the table
+shows the selected attempts. The 12-core setting is an affinity set, not a claim
+that these algorithms use 12 threads. Shared-host scheduling and runtime/JIT
+startup affect these observations. They compare these implementations and
+fixtures, not the languages generally; no baseline was automatically accepted.
+
+`./big_o` and `./mg` currently measure Rust input growth and allocator usage.
+See [performance cases](docs/performance.md) for coverage and remaining gates.
 
 ## License
 

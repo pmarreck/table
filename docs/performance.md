@@ -1,6 +1,6 @@
 # Performance cases
 
-`./bm` declares the same six CLI workloads for Rust, Zig and Roc: one-row
+`./bm` declares the same six CLI workloads for Rust, Zig, Roc and LuaJIT: one-row
 startup, CSV to TSV, CSV to IR, Markdown to CSV, ASCII input to CSV, and CSV
 autodetection. The conversion cases use 4,096 rows. Each case launches five
 fresh processes and records monotonic wall time from launch through collected
@@ -11,11 +11,11 @@ an independently constructed fixture. The child binary's SHA-256 is recorded
 and checked throughout each invocation. Timings still include process scheduling
 and pipe transfer. The supplied binaries must be optimized builds.
 
-The default suite requires all three complete CLIs. Missing implementations
+The default suite requires all four complete CLIs. Missing implementations
 are a preflight error, never a skipped or passing case. Use
 `./bm --implementation rust` for an explicit subset, or supply absolute executable
-paths through `TABLE_BENCHMARK_RUST`, `TABLE_BENCHMARK_ZIG` and
-`TABLE_BENCHMARK_ROC`. Existing implementation names do not establish that their
+paths through `TABLE_BENCHMARK_RUST`, `TABLE_BENCHMARK_ZIG`,
+`TABLE_BENCHMARK_ROC` and `TABLE_BENCHMARK_LUAJIT`. Existing implementation names do not establish that their
 ports are complete. Historical comparisons are separate per implementation,
 workload and core count; these are fixed-workload observations, not memory or
 growth gates. Source and toolchain provenance still needs review when accepting
@@ -61,13 +61,11 @@ that warmup after the adapter was extended to other formats. Cold-start and
 allocation growth are measured separately as described above, with their own
 coverage limits.
 
-`./bm` currently measures a cold adapter process launching a fresh `table`
-process, converting one CSV row to TSV and verifying its complete output before
-announcing readiness. The reported startup interval includes the adapter and
-child-process startup, conversion, verification and marker delivery; it is not
-an isolated measurement of the executable's loader alone. Single-core and
-12-core cases start five fresh processes each. Other fixed-workload timing cases
-remain to be added.
+The historical `startup-1` and `startup-12` cases in the manifest measure a cold
+adapter launching a fresh `table` process and announcing readiness after verified
+output. They include adapter startup and marker delivery. The current `./bm`
+selects the implementation-prefixed cases described above, which exclude adapter
+startup. Their definitions and histories remain separate.
 
 The v1 visual-input case reported a shape failure in the 12-core-affinity run,
 with uneven samples at 4,096 rows. A reverse-order diagnostic had a smaller
@@ -81,3 +79,10 @@ Each completed with verified output and an `UNBASELINED` verdict; no baseline
 was accepted. The full-suite preflight correctly refused the missing complete
 Zig and Roc executables. These observations do not establish relative speed
 among the implementations.
+
+At source commit `50e6ab6`, all 48 CLI cases were measured with seed `20261106`.
+The same expected-output fixtures were verified for all four implementations.
+All observations are UNBASELINED. Rust and Roc CSV/TSV 12-core cases used the
+runner's one permitted retry. Selected five-sample medians are published in the
+README without private host or filesystem metadata; immutable observations and
+retry diagnostics remain in external history.
