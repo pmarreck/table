@@ -14,3 +14,5 @@ Completed PLAN.md items retired by plan-retire, oldest retirement first.
 - [x] [PLAN] Add conservative stdin format autodetection with explicit ambiguity errors and preserve explicit TSV streaming (done 2026-11-06 08:47 EST; commit 5942f07).
 - [x] [PLAN] Expand adversarial format-pair and loss-handling qualification (done 2026-11-05 13:14 EST; commit 89fcca6).
 - [x] [PLAN] Include and verify dependency license notices in all distributable bundles (done 2026-11-05 12:38 EST; commit c4d0553).
+- [x] [PLAN] Complete all four CLIs; the shared suite and 496 direct parity cases pass on Linux x86-64 and macOS ARM64 (done 2026-11-06 09:35 EST; commit f4698fe).
+- [x] [PLAN] Add LuaJIT to the shared benchmark matrix and publish all 48 preliminary four-implementation measurements in the README; results remain unbaselined (done 2026-11-06 09:35 EST; commit 50e6ab6).

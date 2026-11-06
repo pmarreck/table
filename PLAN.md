@@ -1,9 +1,7 @@
 # PLAN
 
-- [ ] Remove all Python project tooling and dependencies while preserving the shared suite, external oracles and benchmark coverage.
-- [ ] Measure and explain the Roc ASCII-to-CSV slowdown using the project-approved tooling.
-- [x] Complete all four CLIs; the shared suite and 496 direct parity cases pass on Linux x86-64 and macOS ARM64 (done 2026-11-06 09:35 EST; commit f4698fe).
-- [x] Add LuaJIT to the shared benchmark matrix and publish all 48 preliminary four-implementation measurements in the README; results remain unbaselined (done 2026-11-06 09:35 EST; commit 50e6ab6).
+- [x] Remove all Python project tooling and dependencies; LuaJIT harnesses retain the shared suite, independent CSV/GFM oracles and 48 benchmark cases (done 2026-11-06 13:30 EST; commit e98d1a8).
+- [x] Why is Roc ASCII-to-CSV slower? Answer: row reconstruction costs about 17 ms of a 39 ms run; Unicode width and safety add about 10 ms and 4 ms in separate ablations; diagnostic bypasses are not shipped (context: docs/roc-ascii-performance.md; done 2026-11-06 13:36 EST; code commit e98d1a8).
 - [x] Establish one acceptance/parity suite for all four CLIs with explicit platform qualification gaps (context: docs/implementation-parity.md; done 2026-11-06 09:35 EST; commit f4698fe).
 - [x] Implement the complete Zig CLI and qualify shared native behavior on Linux x86-64 and macOS ARM64; wider targets remain below (done 2026-11-06 09:35 EST; commit f4698fe).
 - [x] Implement the complete Roc CLI and qualify shared native behavior on Linux x86-64 and macOS ARM64; wider targets remain below (done 2026-11-06 09:35 EST; commit f4698fe).

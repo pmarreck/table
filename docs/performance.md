@@ -92,3 +92,16 @@ The LuaJIT/libuv adapter replaces the original adapter under separate
 process runner. Fixture construction, complete-output validation and SHA-256
 checks remain outside each timed interval. Earlier observations retain their
 original definitions and are not compared across this measurement change.
+
+At code commit `e98d1a8`, the complete 48-case suite was rerun with this adapter
+and seed `20261106`. Adapter warmup and two full adapter GC collections occur
+outside each timed child launch. There were 45 UNBASELINED cases and three
+INCONCLUSIVE cases: one-core Zig startup, CSV/TSV and CSV/IR. Each inconclusive
+case exhausted its one permitted retry because of sample variation; the other
+cases used one attempt. Every measured output passed verification. The README
+publishes medians only for the valid observations. Exit status 3 reports these
+unbaselined/inconclusive outcomes, rather than a passed performance gate.
+
+The [Roc ASCII diagnosis](roc-ascii-performance.md) uses separate diagnostic
+definitions and a separate external history project. Disabled-check experiments
+are not production candidates or accepted performance baselines.

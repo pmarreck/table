@@ -42,6 +42,6 @@ Nix package includes the interpreter and native library closure for LuaJIT;
 its script is not a standalone static binary.
 
 The benchmark matrix and its verified fixtures are shared by all four.
-Preliminary Linux measurements at source commit `50e6ab6` are in the README;
-all remain unbaselined. They do not establish general language performance or
+Preliminary Linux measurements using code from `e98d1a8` are in the README;
+45 cases are unbaselined and three are inconclusive. They do not establish general language performance or
 approval of a performance epoch.

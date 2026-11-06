@@ -179,27 +179,33 @@ Use `./bm --implementation rust|zig|roc|luajit` for an explicit subset. The
 
 ### Preliminary measurements
 
-Measured on Linux x86-64 at source commit `50e6ab6`, seed `20261106`, with the
-pinned optimized toolchains. Each cell is the median milliseconds for **one-core /
+Measured on Linux x86-64 using code from commit `e98d1a8`, seed `20261106`, with
+the pinned optimized toolchains and LuaJIT benchmark adapter. Each cell is the median milliseconds for **one-core /
 12-core affinity**, from five fresh CLI processes. Startup converts one data row;
 the other workloads use 4,096 data rows. Timing includes process launch, conversion,
 pipe transfer and exit; fixture construction and verification are excluded.
 
 | Workload | Rust | Zig | Roc | LuaJIT |
 |---|---:|---:|---:|---:|
-| Startup | 1.57 / 0.60 | 1.53 / 0.51 | 1.57 / 0.66 | 2.72 / 2.10 |
-| CSV → TSV | 3.14 / 2.13 | 2.52 / 1.63 | 6.34 / 4.92 | 12.87 / 14.01 |
-| CSV → IR | 3.06 / 1.95 | 2.48 / 1.57 | 4.77 / 3.69 | 13.36 / 12.65 |
-| Markdown → CSV | 3.94 / 2.67 | 3.64 / 2.75 | 11.44 / 10.30 | 56.61 / 57.95 |
-| ASCII → CSV | 5.79 / 4.78 | 4.40 / 3.22 | 39.93 / 39.49 | 50.54 / 49.39 |
-| Autodetect CSV | 6.08 / 4.86 | 3.86 / 3.06 | 10.75 / 9.47 | 26.30 / 29.15 |
+| Startup | 0.67 / 0.95 | noisy / 1.05 | 0.84 / 0.66 | 1.97 / 1.80 |
+| CSV → TSV | 5.35 / 2.21 | noisy / 1.70 | 4.95 / 4.77 | 12.25 / 12.55 |
+| CSV → IR | 5.19 / 2.14 | noisy / 1.98 | 3.84 / 3.49 | 14.18 / 13.27 |
+| Markdown → CSV | 5.90 / 2.80 | 5.69 / 2.63 | 10.13 / 10.63 | 56.00 / 61.16 |
+| ASCII → CSV | 11.54 / 4.69 | 6.06 / 3.17 | 40.11 / 38.97 | 47.85 / 51.29 |
+| Autodetect CSV | 11.04 / 6.41 | 3.07 / 3.93 | 9.34 / 9.28 | 25.70 / 29.96 |
 
-All 48 observations are **UNBASELINED**. The Rust and Roc CSV → TSV 12-core
-cases used the runner's one permitted retry after sample variation; the table
-shows the selected attempts. The 12-core setting is an affinity set, not a claim
+Of 48 cases, 45 are **UNBASELINED**. The three one-core Zig cases marked
+**noisy** remained **INCONCLUSIVE** after the runner's one permitted retry;
+their timings are omitted. All measured outputs passed verification. The
+12-core setting is an affinity set, not a claim
 that these algorithms use 12 threads. Shared-host scheduling and runtime/JIT
 startup affect these observations. They compare these implementations and
 fixtures, not the languages generally; no baseline was automatically accepted.
+
+Roc's ASCII input cost comes largely from rebuilding each row as character
+strings before splitting it, plus Unicode safety and display-width work.
+[Diagnostic measurements](docs/roc-ascii-performance.md) isolate those costs;
+the diagnostic bypasses are not part of the shipped converter.
 
 `./big_o` and `./mg` currently measure Rust input growth and allocator usage.
 See [performance cases](docs/performance.md) for coverage and remaining gates.
