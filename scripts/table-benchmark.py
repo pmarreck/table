@@ -8,7 +8,7 @@ import subprocess
 import sys
 import time
 
-IMPLEMENTATIONS = ("rust", "zig", "roc")
+IMPLEMENTATIONS = ("rust", "zig", "roc", "luajit")
 WORKLOADS = ("startup", "csv-tsv", "csv-ir", "markdown-csv", "ascii-csv", "autodetect-csv")
 
 

@@ -18,6 +18,67 @@
       rocCompiler = pkgs.lib.findFirst (pkg: (pkg.pname or "") == "roc-nightly")
         (throw "the pinned predecessor must provide its Roc compiler")
         renderer.packages.${system}.default.nativeBuildInputs;
+      coreDeps = pkgs.rustPlatform.importCargoLock { lockFile = ./Cargo.lock; };
+      unicodeSource = "${coreDeps}/utf8proc-sys-0.1.2/utf8proc";
+      pf = { x86_64-linux = "linux-amd64"; aarch64-linux = "linux-arm64"; aarch64-darwin = "macos-arm64"; }.${system};
+      about = "table 0.1.0 — Convert tabular data; PF=${pf}${pkgs.lib.optionalString pkgs.stdenv.hostPlatform.isLinux " VARIANT=gnu"}";
+      rendererBin = "${renderer.packages.${system}.rust}/bin/tsv-to-ansi-table-rust";
+      nativeIo = pkgs.stdenv.mkDerivation {
+        pname = "table-native-io"; version = "0.1.0";
+        src = ./native;
+        buildPhase = ''
+          $CC -O2 -fPIC ${if pkgs.stdenv.hostPlatform.isDarwin then "-dynamiclib" else "-shared"} io.c ${unicodeSource}/utf8proc.c -I${unicodeSource} -DUTF8PROC_STATIC -DTABLE_ABOUT='"${about}"' -DTABLE_RENDERER='"${rendererBin}"' -o libtable-native.so
+        '';
+        installPhase = ''mkdir -p "$out/lib"; cp libtable-native.so "$out/lib/"'';
+      };
+      luaPackage = pkgs.stdenvNoCC.mkDerivation {
+        pname = "table-luajit"; version = "0.1.0";
+        src = ./luajit;
+        dontBuild = true;
+        installPhase = ''
+          mkdir -p "$out/bin" "$out/libexec"
+          {
+            printf '#!${pkgs.luajit}/bin/luajit\n'
+            printf '%s\n' 'package.preload.table_config=function() return {native="${nativeIo}/lib/libtable-native.so",renderer="${rendererBin}"} end'
+            cat table.lua
+          } > "$out/bin/table-luajit"
+          chmod +x "$out/bin/table-luajit"
+          cp ${rendererBin} "$out/libexec/tsv-to-ansi-table"
+        '';
+      };
+      rocPackage = pkgs.stdenvNoCC.mkDerivation {
+        pname = "table-roc"; version = "0.1.0";
+        src = pkgs.lib.fileset.toSource { root = ./.; fileset = ./roc; };
+        nativeBuildInputs = [ rocCompiler ];
+        buildPhase = ''
+          export HOME="$TMPDIR/roc-home" XDG_CACHE_HOME="$TMPDIR/roc-cache"
+          mkdir -p "$HOME" "$XDG_CACHE_HOME" "$out/bin" "$out/libexec"
+          printf '%s\n' 'BuildInfo :: [].{' 'about = "table 0.1.0 — Convert tabular data; PF=${pf}${pkgs.lib.optionalString pkgs.stdenv.hostPlatform.isLinux " VARIANT=musl"}"' 'renderer = "${rendererBin}"' '}' > roc/BuildInfo.roc
+          flags=(
+            --replace-dep https://github.com/roc-lang/basic-cli/releases/download/0.25.0/CZsY7tYZwR3rj9kYbpaCfxki2yVAaRL8bBwMLvB2xkbA.tar.zst ${renderer.packages.${system}.default.ROC_PLATFORM}/main.roc
+            --replace-dep https://github.com/roc-lang/http/releases/download/1.0.0/6ZUwqYhCS8PU9Mo6MF7oV82ET2o7KYb57CLKDq4cq4sS.tar.zst ${renderer.packages.${system}.default.ROC_HTTP}/main.roc
+            --replace-dep https://github.com/roc-lang/unicode/releases/download/4.2.0/4W8SHzvwet9hH9qZewJ1J1CVQoH7YKA6zyijWFTB3y1w.tar.zst ${renderer.packages.${system}.default.ROC_UNICODE}/main.roc
+          )
+          roc check roc/main.roc "''${flags[@]}"
+          roc test roc/main.roc --no-cache "''${flags[@]}"
+          roc build roc/main.roc --opt=speed --target=${{ x86_64-linux = "x64musl"; aarch64-linux = "arm64musl"; aarch64-darwin = "arm64mac"; }.${system}} --output="$out/bin/table-roc" "''${flags[@]}"
+        '';
+        installPhase = ''cp ${rendererBin} "$out/libexec/tsv-to-ansi-table"'';
+      };
+      zigPackage = pkgs.stdenvNoCC.mkDerivation {
+        pname = "table-zig"; version = "0.1.0";
+        src = pkgs.lib.fileset.toSource { root = ./.; fileset = pkgs.lib.fileset.unions [ ./zig ./native ]; };
+        nativeBuildInputs = [ pkgs.zig_0_16 ];
+        buildPhase = ''
+          export ZIG_GLOBAL_CACHE_DIR="$TMPDIR/zig-global" ZIG_LOCAL_CACHE_DIR="$TMPDIR/zig-local"
+          unset NIX_CFLAGS_COMPILE NIX_LDFLAGS
+          target=${{ x86_64-linux = "x86_64-linux-musl"; aarch64-linux = "aarch64-linux-musl"; aarch64-darwin = "aarch64-macos"; }.${system}}
+          zig build-obj zig/main.zig -lc -OReleaseFast -target "$target" -fcompiler-rt -femit-bin=core.o
+          mkdir -p "$out/bin" "$out/libexec"
+          zig cc -O3 -target "$target" native/entry.c native/io.c ${unicodeSource}/utf8proc.c core.o -I${unicodeSource} -DUTF8PROC_STATIC -DTABLE_RENDERER='"${rendererBin}"' -DTABLE_ABOUT='"table 0.1.0 — Convert tabular data; PF=${pf}${pkgs.lib.optionalString pkgs.stdenv.hostPlatform.isLinux " VARIANT=musl"}"' -o "$out/bin/table-zig"
+        '';
+        installPhase = ''cp ${rendererBin} "$out/libexec/tsv-to-ansi-table"'';
+      };
       publicationFixture = pkgs.runCommand "table-publication-fixture" { } ''
         mkdir -p "$out/bin" "$out/libexec" "$out/share/licenses/table"
         cat > "$out/bin/table" <<'EOF'
@@ -69,6 +130,9 @@ EOF
             mv "$out/bin/$probe${targetPkgs.stdenv.hostPlatform.extensions.executable}" "$out/libexec/$probe${targetPkgs.stdenv.hostPlatform.extensions.executable}"
           done
           ${pkgs.lib.optionalString runChecks ''
+            ln -s ${zigPackage}/bin/table-zig "$out/bin/table-zig"
+            ln -s ${rocPackage}/bin/table-roc "$out/bin/table-roc"
+            ln -s ${luaPackage}/bin/table-luajit "$out/bin/table-luajit"
             install -m755 scripts/table-benchmark.py "$out/libexec/table-benchmark"
             substituteInPlace "$out/libexec/table-benchmark" --replace-fail '#!/usr/bin/env python3' '#!${pkgs.python3}/bin/python3'
           ''}
@@ -97,6 +161,23 @@ EOF
           python3 tests/benchmark-contract.py "target/${targetPkgs.stdenv.hostPlatform.rust.rustcTarget}/release/table"
           python3 tests/csv-oracle.py "target/${targetPkgs.stdenv.hostPlatform.rust.rustcTarget}/release/table"
           python3 tests/markdown-oracle.py "target/${targetPkgs.stdenv.hostPlatform.rust.rustcTarget}/release/table"
+          ${pkgs.lib.optionalString runChecks ''
+            rust_binary="$PWD/target/${targetPkgs.stdenv.hostPlatform.rust.rustcTarget}/release/table"
+            cli_test=""
+            for candidate in target/${targetPkgs.stdenv.hostPlatform.rust.rustcTarget}/release/deps/cli-*; do
+              if [[ -f "$candidate" && -x "$candidate" && "$candidate" != *.d ]]; then cli_test="$PWD/$candidate"; fi
+            done
+            [[ -n "$cli_test" ]] || { echo 'missing compiled CLI acceptance harness' >&2; exit 1; }
+            for binary in "$rust_binary" ${zigPackage}/bin/table-zig ${rocPackage}/bin/table-roc ${luaPackage}/bin/table-luajit; do
+              TABLE_TEST_BINARY="$binary" "$cli_test" --test-threads=1
+              python3 tests/cli-conformance.py "$binary" "$TABLE_RENDERER"
+              python3 tests/autodetect.py "$binary"
+              python3 tests/csv-oracle.py "$binary"
+              python3 tests/markdown-oracle.py "$binary"
+              python3 tests/benchmark-contract.py "$binary"
+            done
+            python3 tests/parity.py "$rust_binary" ${zigPackage}/bin/table-zig ${rocPackage}/bin/table-roc ${luaPackage}/bin/table-luajit
+          ''}
           (
             cd ${renderer}
             for suite in check semantics errors equals color glyphs streaming; do
@@ -118,6 +199,9 @@ EOF
         };
       };
     in {
+      luajit = luaPackage;
+      roc = rocPackage;
+      zig = zigPackage;
       profiling-tool = renderer.inputs.performance-profiling.packages.${system}.default;
       default = package (if pkgs.stdenv.hostPlatform.isLinux then pkgs.pkgsStatic else pkgs) "${renderer.packages.${system}.rust}/bin/tsv-to-ansi-table-rust" true;
     } // pkgs.lib.optionalAttrs (system == "x86_64-linux") {

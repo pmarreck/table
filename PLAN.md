@@ -1,5 +1,7 @@
 # PLAN
 
+- [ ] Complete all four CLIs and run the same acceptance and direct parity suite against Rust, Zig, Roc and LuaJIT.
+- [ ] Add LuaJIT to the shared benchmark matrix and publish preliminary four-implementation results in the README.
 - [x] Add shared CLI benchmark cases for Rust, Zig and Roc; Rust measurements are unbaselined and complete Zig/Roc executables are still required (done 2026-11-06 08:47 EST; commit 5942f07).
 - [x] Register final publication links as Nix GC roots with isolated failure and registry regressions (done 2026-11-06 08:47 EST; commit 5942f07).
 - [x] Add conservative stdin format autodetection with explicit ambiguity errors and preserve explicit TSV streaming (done 2026-11-06 08:47 EST; commit 5942f07).

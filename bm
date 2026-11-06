@@ -3,8 +3,8 @@ set -euo pipefail
 cd "$(dirname "$0")"
 implementation=all
 if [[ ${1:-} == --help ]]; then
-    echo 'Usage: ./bm [--implementation all|rust|zig|roc] [performance-profile options]'
-    echo 'All implementations are required by default. Override executable paths with TABLE_BENCHMARK_RUST, TABLE_BENCHMARK_ZIG and TABLE_BENCHMARK_ROC.'
+    echo 'Usage: ./bm [--implementation all|rust|zig|roc|luajit] [performance-profile options]'
+    echo 'All implementations are required by default. Override executable paths with TABLE_BENCHMARK_RUST, TABLE_BENCHMARK_ZIG and TABLE_BENCHMARK_ROC, TABLE_BENCHMARK_LUAJIT.'
     exit 0
 fi
 options=()
@@ -16,15 +16,18 @@ while (($#)); do
         *) echo "table: unknown benchmark option: $1" >&2; exit 2 ;;
     esac
 done
-case "$implementation" in all) implementations=(rust zig roc) ;; rust|zig|roc) implementations=("$implementation") ;; *) echo 'table: implementation must be all, rust, zig, or roc' >&2; exit 2 ;; esac
+case "$implementation" in all) implementations=(rust zig roc luajit) ;; rust|zig|roc|luajit) implementations=("$implementation") ;; *) echo 'table: implementation must be all, rust, zig, roc, or luajit' >&2; exit 2 ;; esac
 package=$(nix build --no-link --print-out-paths .#default)
 profiler=$(nix build --no-link --print-out-paths .#profiling-tool)
 export PATH="$package/libexec:$PATH"
 export PERFORMANCE_HISTORY_URL="${PERFORMANCE_HISTORY_URL:-file://${XDG_STATE_HOME:-$HOME/.local/state}/performance-history}"
 export TABLE_BENCHMARK_RUST="${TABLE_BENCHMARK_RUST:-$package/bin/table}"
+export TABLE_BENCHMARK_ZIG="${TABLE_BENCHMARK_ZIG:-$package/bin/table-zig}"
+export TABLE_BENCHMARK_ROC="${TABLE_BENCHMARK_ROC:-$package/bin/table-roc}"
+export TABLE_BENCHMARK_LUAJIT="${TABLE_BENCHMARK_LUAJIT:-$package/bin/table-luajit}"
 missing=0
 for impl in "${implementations[@]}"; do
-    case "$impl" in rust) key=TABLE_BENCHMARK_RUST ;; zig) key=TABLE_BENCHMARK_ZIG ;; roc) key=TABLE_BENCHMARK_ROC ;; esac
+    case "$impl" in rust) key=TABLE_BENCHMARK_RUST ;; zig) key=TABLE_BENCHMARK_ZIG ;; roc) key=TABLE_BENCHMARK_ROC ;; luajit) key=TABLE_BENCHMARK_LUAJIT ;; esac
     if [[ -z ${!key:-} || ! -x ${!key:-} ]]; then echo "table: missing $impl CLI; provide $key as an optimized executable path" >&2; missing=1; fi
 done
 (( !missing )) || exit 2

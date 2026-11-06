@@ -1,8 +1,13 @@
 use std::io::Write;
 use std::process::{Command, Stdio};
 
+fn table_binary() -> std::path::PathBuf {
+    std::env::var_os("TABLE_TEST_BINARY").map(std::path::PathBuf::from)
+        .unwrap_or_else(|| std::path::PathBuf::from(env!("CARGO_BIN_EXE_table")))
+}
+
 fn invoke(args: &[&str], input: &[u8]) -> std::process::Output {
-    let mut child = Command::new(env!("CARGO_BIN_EXE_table"))
+    let mut child = Command::new(table_binary())
         .args(args).stdin(Stdio::piped()).stdout(Stdio::piped()).stderr(Stdio::piped())
         .spawn().unwrap();
     if let Err(error) = child.stdin.take().unwrap().write_all(input) {
@@ -31,7 +36,7 @@ fn unrepresentable_output_fails_without_partial_stdout() {
 
 #[test]
 fn about_describes_compiled_platform_not_environment() {
-    let output = Command::new(env!("CARGO_BIN_EXE_table"))
+    let output = Command::new(table_binary())
         .arg("--about").env("PF", "wrong").env("VARIANT", "wrong").output().unwrap();
     assert!(output.status.success());
     let text = String::from_utf8(output.stdout).unwrap();
@@ -88,7 +93,7 @@ fn fixed_width_tsv_visual_output_streams_before_eof() {
     use std::io::{BufRead, BufReader};
     use std::sync::mpsc;
     use std::time::Duration;
-    let mut child = Command::new(env!("CARGO_BIN_EXE_table"))
+    let mut child = Command::new(table_binary())
         .args(["--from", "tsv", "--to", "ascii", "--widths", "5,5", "--color", "never"])
         .stdin(Stdio::piped()).stdout(Stdio::piped()).stderr(Stdio::piped()).spawn().unwrap();
     let mut stdin = child.stdin.take().unwrap();
@@ -157,7 +162,7 @@ fn buffered_visual_output_uses_parent_terminal_width() {
     assert_eq!(rc, 0, "could not create test PTY: {}", std::io::Error::last_os_error());
     let mut master = unsafe { File::from_raw_fd(master) };
     let slave = unsafe { File::from_raw_fd(slave) };
-    let mut command = Command::new(env!("CARGO_BIN_EXE_table"));
+    let mut command = Command::new(table_binary());
     command.args(["--from", "csv", "--to", "ascii", "--color", "never"]);
     if let Some(value) = columns { command.env("COLUMNS", value); } else { command.env_remove("COLUMNS"); }
     if let Some(value) = explicit { command.args(["--terminal-width", value]); }
@@ -196,7 +201,13 @@ fn installed_renderer_is_selected_relative_to_executable() {
     let binary = root.join("bin").join(format!("table{suffix}"));
     // The Nix-built test binary is immutable here; linking avoids racing a
     // writable copy descriptor inherited by another parallel subprocess.
-    fs::hard_link(env!("CARGO_BIN_EXE_table"), &binary).unwrap();
+    if let Err(error) = fs::hard_link(table_binary(), &binary) {
+        // Packaged implementations may be on a different mount from scratch.
+        // The external-implementation harness runs serially so no concurrent
+        // subprocess can inherit a transient writable copy descriptor.
+        if error.raw_os_error() == Some(libc::EXDEV) { fs::copy(table_binary(), &binary).unwrap(); }
+        else { panic!("cannot prepare immutable executable fixture: {error}"); }
+    }
     // A deliberately invalid bundled renderer must be selected ahead of the
     // valid Nix build-time fallback, causing an observable launch failure.
     fs::write(libexec.join(format!("tsv-to-ansi-table{suffix}")), b"not an executable").unwrap();
