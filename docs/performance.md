@@ -5,7 +5,7 @@ startup, CSV to TSV, CSV to IR, Markdown to CSV, ASCII input to CSV, and CSV
 autodetection. The conversion cases use 4,096 rows. Each case launches five
 fresh processes and records monotonic wall time from launch through collected
 output and exit, excluding output verification. Startup uses the same interval
-with one row; Python adapter startup is excluded. Process startup is fresh,
+with one row; LuaJIT adapter startup is excluded. Process startup is fresh,
 but filesystem caches are not flushed. Each complete output is checked against
 an independently constructed fixture. The child binary's SHA-256 is recorded
 and checked throughout each invocation. Timings still include process scheduling
@@ -86,3 +86,9 @@ All observations are UNBASELINED. Rust and Roc CSV/TSV 12-core cases used the
 runner's one permitted retry. Selected five-sample medians are published in the
 README without private host or filesystem metadata; immutable observations and
 retry diagnostics remain in external history.
+
+The LuaJIT/libuv adapter replaces the original adapter under separate
+`v2-luajit-adapter` case definitions. It reuses the pinned profiling engine's
+process runner. Fixture construction, complete-output validation and SHA-256
+checks remain outside each timed interval. Earlier observations retain their
+original definitions and are not compared across this measurement change.

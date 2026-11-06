@@ -150,7 +150,7 @@ Horizontal, vertical and junction glyphs must be distinct from one another.
 An input cell containing the vertical separator is rejected as ambiguous.
 
 The Nix suite exercises all 36 format pairs on unclipped, unambiguous data,
-checks CSV against Python's standard-library parser using control characters and
+checks CSV against the independent Rust `csv` crate using control characters and
 randomized cells, checks rendered Markdown with the GFM reference parser, and
 runs the pinned predecessor's CLI checks for headers, options, colors, glyphs
 and fixed-width streaming against the compatibility executable. These checks
@@ -160,7 +160,7 @@ are not a claim that visual tables recover clipped or padded source data.
 
 `./test` is the complete current correctness suite, built through Nix. Every
 implementation runs the same 12 CLI integration tests, format-pair checks,
-autodetection checks, external Python CSV and GFM Markdown oracles, and benchmark
+autodetection checks, independent CSV and GFM Markdown oracles, and benchmark
 fixture checks. The direct parity corpus compares stdout, stderr and exit status
 for 496 cases, including malformed input and randomized quoted/control-character
 cells. `--about` is checked separately because ABI/runtime metadata can differ.

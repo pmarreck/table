@@ -19,6 +19,20 @@
   in {
     packages = forAll (system: let
       pkgs = import nixpkgs { inherit system; };
+      profilingTool = renderer.inputs.performance-profiling.packages.${system}.default;
+      luaTools = pkgs.luajit.withPackages (p: [ p.lua-cjson p.luv ]);
+      csvOracle = pkgs.rustPlatform.buildRustPackage {
+        pname = "table-csv-oracle"; version = "0.1.0";
+        src = ./tests/csv-oracle;
+        cargoLock.lockFile = ./tests/csv-oracle/Cargo.lock;
+      };
+      markdownCells = pkgs.runCommand "table-markdown-cells" {
+        nativeBuildInputs = [ pkgs.stdenv.cc pkgs.pkg-config ];
+        buildInputs = [ pkgs.libxml2 ];
+      } ''
+        mkdir -p "$out/bin"
+        $CC ${./tests/markdown-cells.c} $(pkg-config --cflags --libs libxml-2.0) -o "$out/bin/table-markdown-cells"
+      '';
       rocCompiler = pkgs.lib.findFirst (pkg: (pkg.pname or "") == "roc-nightly")
         (throw "the pinned predecessor must provide its Roc compiler")
         renderer.packages.${system}.default.nativeBuildInputs;
@@ -170,8 +184,13 @@ EOF
             ln -s ${zigPackage}/bin/table-zig "$out/bin/table-zig"
             ln -s ${rocPackage}/bin/table-roc "$out/bin/table-roc"
             ln -s ${luaPackage}/bin/table-luajit "$out/bin/table-luajit"
-            install -m755 scripts/table-benchmark.py "$out/libexec/table-benchmark"
-            substituteInPlace "$out/libexec/table-benchmark" --replace-fail '#!/usr/bin/env python3' '#!${pkgs.python3}/bin/python3'
+            mkdir -p "$out/libexec/table-support"
+            cp scripts/harness.lua scripts/benchmark.lua scripts/table-benchmark.lua "$out/libexec/table-support/"
+            substituteInPlace "$out/libexec/table-support/harness.lua" \
+              --replace-fail '@TABLE_PROFILING_SRC@' '${profilingTool}/share/performance-profile/src' \
+              --replace-fail '@TABLE_SHA256@' '${pkgs.coreutils}/bin/sha256sum'
+            makeWrapper ${luaTools}/bin/luajit "$out/libexec/table-benchmark" \
+              --add-flags "$out/libexec/table-support/table-benchmark.lua"
           ''}
           cp "$TABLE_RENDERER" "$out/libexec/tsv-to-ansi-table${targetPkgs.stdenv.hostPlatform.extensions.executable}"
           ${if targetPkgs.stdenv.hostPlatform.isWindows then ''
@@ -180,9 +199,21 @@ EOF
             ln -s ../libexec/tsv-to-ansi-table "$out/bin/tsv-to-ansi-table"
           ''}
           ${notices}
+          ${pkgs.lib.optionalString runChecks ''
+            {
+              printf '\n\n===== LuaJIT benchmark adapter dependencies =====\n\n'
+              cat ${pkgs.luajit.pkgs.lua-cjson.src}/LICENSE
+              cat ${pkgs.luajit.pkgs.luv.src}/LICENSE.txt
+              cat ${pkgs.luajit.pkgs.luv.src}/deps/lua-compat-5.3/LICENSE
+              cat ${pkgs.luajit.pkgs.luv.src}/deps/libuv/LICENSE
+              cat ${pkgs.luajit.pkgs.luv.src}/deps/libuv/LICENSE-extra
+              cat ${renderer.inputs.performance-profiling}/LICENSE
+            } >> "$notice"
+          ''}
         '';
         doCheck = runChecks;
-        nativeCheckInputs = [ pkgs.perl pkgs.file pkgs.python3 pkgs.cmark-gfm pkgs.zig_0_16 rocCompiler pkgs.nix ];
+        nativeBuildInputs = [ pkgs.makeWrapper ];
+        nativeCheckInputs = [ pkgs.perl pkgs.file luaTools pkgs.cmark-gfm pkgs.zig_0_16 rocCompiler pkgs.nix ];
         postCheck = ''
           bash tests/build-publication.sh
           bash tests/nix-roots.sh
@@ -192,12 +223,10 @@ EOF
           roc check roc/test.roc
           roc test roc/test.roc --no-cache
           "target/${targetPkgs.stdenv.hostPlatform.rust.rustcTarget}/release/table-memory" --self-test
-          python3 tests/profiling-declarations.py "target/${targetPkgs.stdenv.hostPlatform.rust.rustcTarget}/release/table-perf"
-          python3 tests/cli-conformance.py "target/${targetPkgs.stdenv.hostPlatform.rust.rustcTarget}/release/table" "$TABLE_RENDERER"
-          python3 tests/autodetect.py "target/${targetPkgs.stdenv.hostPlatform.rust.rustcTarget}/release/table"
-          python3 tests/benchmark-contract.py "target/${targetPkgs.stdenv.hostPlatform.rust.rustcTarget}/release/table"
-          python3 tests/csv-oracle.py "target/${targetPkgs.stdenv.hostPlatform.rust.rustcTarget}/release/table"
-          python3 tests/markdown-oracle.py "target/${targetPkgs.stdenv.hostPlatform.rust.rustcTarget}/release/table"
+          export TABLE_PROFILING_SRC=${profilingTool}/share/performance-profile/src
+          export TABLE_SHA256=${pkgs.coreutils}/bin/sha256sum
+          export TABLE_TEST_SHELL=${pkgs.runtimeShell}
+          luajit tests/profiling-declarations.lua "target/${targetPkgs.stdenv.hostPlatform.rust.rustcTarget}/release/table-perf"
           ${pkgs.lib.optionalString runChecks ''
             rust_binary="$PWD/target/${targetPkgs.stdenv.hostPlatform.rust.rustcTarget}/release/table"
             cli_test=""
@@ -207,13 +236,9 @@ EOF
             [[ -n "$cli_test" ]] || { echo 'missing compiled CLI acceptance harness' >&2; exit 1; }
             for binary in "$rust_binary" ${zigPackage}/bin/table-zig ${rocPackage}/bin/table-roc ${luaPackage}/bin/table-luajit; do
               TABLE_TEST_BINARY="$binary" "$cli_test" --test-threads=1
-              python3 tests/cli-conformance.py "$binary" "$TABLE_RENDERER"
-              python3 tests/autodetect.py "$binary"
-              python3 tests/csv-oracle.py "$binary"
-              python3 tests/markdown-oracle.py "$binary"
-              python3 tests/benchmark-contract.py "$binary"
+              luajit tests/shared.lua "$binary" "$TABLE_RENDERER" ${csvOracle}/bin/table-csv-oracle ${markdownCells}/bin/table-markdown-cells
             done
-            python3 tests/parity.py "$rust_binary" ${zigPackage}/bin/table-zig ${rocPackage}/bin/table-roc ${luaPackage}/bin/table-luajit
+            luajit tests/parity.lua "$rust_binary" ${zigPackage}/bin/table-zig ${rocPackage}/bin/table-roc ${luaPackage}/bin/table-luajit
           ''}
           (
             cd ${renderer}
@@ -252,6 +277,7 @@ EOF
       zig = zigPackage;
       rust = rustPackage;
       profiling-tool = renderer.inputs.performance-profiling.packages.${system}.default;
+      csv-oracle = csvOracle;
       default = bundle canonical;
     } // pkgs.lib.optionalAttrs (system == "x86_64-linux") {
       linux-arm64-cross = package pkgs.pkgsCross.aarch64-multiplatform-musl "${renderer.packages.${system}.linux-arm64}/bin/tsv-to-ansi-table-zig" false;

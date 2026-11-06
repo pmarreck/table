@@ -19,6 +19,12 @@ Finite agreement is evidence for these cases, not a proof over all possible
 inputs. Rust is a comparison reference, while the external parsers and fixed
 wire vectors provide separate correctness oracles.
 
+The shared harness runs in LuaJIT. CSV output is read by the separately packaged
+`csv` crate (1.4.0); cmark-gfm renders Markdown, and libxml2 extracts its cell
+text. Randomized tests use fixed seeds and the same xorshift32 sequence for all
+four executables. That sequence differs from the earlier harness, while the
+case counts and control-character, quoting and Unicode input classes remain.
+
 The full shared suite has passed natively on Linux x86-64 and macOS ARM64.
 Nix exposes native Linux ARM64 outputs, but those require a native builder and
 have not yet run this suite. Rust also retains its Linux ARM64 and Windows
