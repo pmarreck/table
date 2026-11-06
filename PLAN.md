@@ -1,6 +1,8 @@
 # PLAN
 
-- [ ] Add conservative stdin format autodetection with explicit ambiguity errors and preserve explicit TSV streaming.
+- [x] Add shared CLI benchmark cases for Rust, Zig and Roc; Rust measurements are unbaselined and complete Zig/Roc executables are still required (done 2026-11-06 08:47 EST; commit 5942f07).
+- [x] Register final publication links as Nix GC roots with isolated failure and registry regressions (done 2026-11-06 08:47 EST; commit 5942f07).
+- [x] Add conservative stdin format autodetection with explicit ambiguity errors and preserve explicit TSV streaming (done 2026-11-06 08:47 EST; commit 5942f07).
 - [ ] Establish a shared, implementation-independent CLI conformance suite and target matrix for Rust, Zig and Roc (context: docs/implementation-parity.md).
 - [ ] Implement the complete table CLI in Zig and qualify it against the shared suite and platform matrix.
 - [ ] Implement the complete table CLI in Roc and qualify it against the shared suite and platform matrix.

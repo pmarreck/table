@@ -75,3 +75,9 @@ transition; neither observation establishes the cause. The v2 cases also
 record process CPU time on Unix, outside the wall-clock interval boundaries, to
 help distinguish computation from scheduling delay. Wall time remains the gated
 metric. The v1 failure remains part of the measurement history.
+
+On 2026-11-06, all 12 Rust CLI cases were measured at commit `5942f07`.
+Each completed with verified output and an `UNBASELINED` verdict; no baseline
+was accepted. The full-suite preflight correctly refused the missing complete
+Zig and Roc executables. These observations do not establish relative speed
+among the implementations.
