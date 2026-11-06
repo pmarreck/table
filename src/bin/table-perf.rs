@@ -3,8 +3,22 @@ use std::hint::black_box;
 use std::time::Instant;
 use table::{decode, encode, parse_delimited, write_delimited};
 
-#[derive(Clone, Copy)]
-enum Case { CsvIr, Markdown, VisualInput }
+macro_rules! growth_cases {
+    ($($variant:ident => $name:literal),+ $(,)?) => {
+        #[derive(Clone, Copy)]
+        enum Case { $($variant),+ }
+        impl Case {
+            const NAMES: &'static [&'static str] = &[$($name),+];
+            fn parse(name: &str) -> Option<Self> {
+                match name {
+                    $(concat!($name, "-1") | concat!($name, "-12") => Some(Self::$variant),)+
+                    _ => None,
+                }
+            }
+        }
+    };
+}
+growth_cases! { CsvIr => "csv-ir", Markdown => "markdown", VisualInput => "visual-input", Detection => "autodetect-csv" }
 
 #[cfg(unix)]
 fn cpu_time() -> Option<u128> {
@@ -20,7 +34,7 @@ fn cpu_time() -> Option<u128> { None }
 
 fn fixture(case: Case, rows: usize) -> (String, String) {
     match case {
-        Case::CsvIr => {
+        Case::CsvIr | Case::Detection => {
             let source = "alpha,42,\"x,y\"\n".repeat(rows);
             (source.clone(), source)
         }
@@ -38,6 +52,11 @@ fn fixture(case: Case, rows: usize) -> (String, String) {
 
 fn roundtrip(case: Case, input: &str) -> (String, usize) {
     match case {
+        Case::Detection => {
+            assert_eq!(table::detect::detect(black_box(input.as_bytes()), None).unwrap(), "csv");
+            let parsed = parse_delimited(black_box(input), true, false).unwrap();
+            (write_delimited(black_box(&parsed), true).unwrap(), parsed.rows.len())
+        }
         Case::CsvIr => {
             let parsed = parse_delimited(black_box(input), true, false).unwrap();
             let wire = encode(black_box(&parsed)).unwrap();
@@ -64,13 +83,12 @@ fn correct(expected: &str, actual: &str, expected_rows: usize, actual_rows: usiz
 
 fn main() {
     let args: Vec<_> = std::env::args().collect();
+    if args.len() == 2 && args[1] == "--list" {
+        for name in Case::NAMES { println!("{name}"); }
+        return;
+    }
     assert_eq!(args.len(), 4, "expected case, sizes and seed");
-    let case = match args[1].as_str() {
-        "csv-ir-1" | "csv-ir-12" => Case::CsvIr,
-        "markdown-1" | "markdown-12" => Case::Markdown,
-        "visual-input-1" | "visual-input-12" => Case::VisualInput,
-        _ => panic!("unknown performance case"),
-    };
+    let case = Case::parse(&args[1]).expect("unknown performance case");
     let sizes: Vec<usize> = args[2].split(',').map(|s| s.parse().expect("invalid size")).collect();
     assert!(!sizes.is_empty() && sizes.iter().all(|&n| n > 0 && n <= 1_000_000));
     // Warm the actual path at the largest size before measuring any size so
@@ -132,7 +150,7 @@ mod tests {
     }
     #[test]
     fn fixtures_exercise_each_case() {
-        for case in [Case::CsvIr, Case::Markdown, Case::VisualInput] {
+        for case in [Case::CsvIr, Case::Markdown, Case::VisualInput, Case::Detection] {
             let (input, expected) = fixture(case, 3);
             let (actual, rows) = roundtrip(case, &input);
             assert!(correct(&expected, &actual, 3, rows));

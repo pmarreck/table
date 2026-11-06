@@ -1,8 +1,41 @@
 #!/usr/bin/env bash
 set -euo pipefail
 cd "$(dirname "$0")"
+implementation=all
+if [[ ${1:-} == --help ]]; then
+    echo 'Usage: ./bm [--implementation all|rust|zig|roc] [performance-profile options]'
+    echo 'All implementations are required by default. Override executable paths with TABLE_BENCHMARK_RUST, TABLE_BENCHMARK_ZIG and TABLE_BENCHMARK_ROC.'
+    exit 0
+fi
+options=()
+while (($#)); do
+    case "$1" in
+        --implementation) [[ $# -ge 2 ]] || exit 2; implementation=$2; shift 2 ;;
+        --seed|--history-url) [[ $# -ge 2 ]] || exit 2; options+=("$1" "$2"); shift 2 ;;
+        --json|--simple) options+=("$1"); shift ;;
+        *) echo "table: unknown benchmark option: $1" >&2; exit 2 ;;
+    esac
+done
+case "$implementation" in all) implementations=(rust zig roc) ;; rust|zig|roc) implementations=("$implementation") ;; *) echo 'table: implementation must be all, rust, zig, or roc' >&2; exit 2 ;; esac
 package=$(nix build --no-link --print-out-paths .#default)
 profiler=$(nix build --no-link --print-out-paths .#profiling-tool)
 export PATH="$package/libexec:$PATH"
 export PERFORMANCE_HISTORY_URL="${PERFORMANCE_HISTORY_URL:-file://${XDG_STATE_HOME:-$HOME/.local/state}/performance-history}"
-exec "$profiler/bin/performance-profile" run --mode bm "$@"
+export TABLE_BENCHMARK_RUST="${TABLE_BENCHMARK_RUST:-$package/bin/table}"
+missing=0
+for impl in "${implementations[@]}"; do
+    case "$impl" in rust) key=TABLE_BENCHMARK_RUST ;; zig) key=TABLE_BENCHMARK_ZIG ;; roc) key=TABLE_BENCHMARK_ROC ;; esac
+    if [[ -z ${!key:-} || ! -x ${!key:-} ]]; then echo "table: missing $impl CLI; provide $key as an optimized executable path" >&2; missing=1; fi
+done
+(( !missing )) || exit 2
+verdict=0
+cases=$(table-benchmark --list)
+while IFS= read -r benchmark; do
+    for impl in "${implementations[@]}"; do
+        [[ $benchmark == "$impl-"* ]] || continue
+        status=0
+        "$profiler/bin/performance-profile" run --mode bm --case "$benchmark" "${options[@]}" || status=$?
+        case $status in 0) ;; 3) (( verdict != 0 )) || verdict=3 ;; *) verdict=1 ;; esac
+    done
+done <<< "$cases"
+exit "$verdict"

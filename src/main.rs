@@ -32,14 +32,19 @@ fn run() -> Result<(), String> {
             "--header" if inline.is_none() => { header = true; header_explicit = true; }
             "--no-header" if inline.is_none() => { header = false; header_explicit = true; }
             "--about" if inline.is_none() => { println!("table {} — Convert tabular data; PF={}{}", env!("CARGO_PKG_VERSION"), platform(), variant()); return Ok(()); }
-            "-h" | "--help" if inline.is_none() => { println!("Usage: table --from csv|tsv|markdown|ir|ascii|ansi --to csv|tsv|markdown|ir|ascii|ansi [--header|--no-header]\nVisual output: --widths, --align, --overflow, --terminal-width, --color, --plain, --decimal-separator."); return Ok(()); }
+            "-h" | "--help" if inline.is_none() => { println!("Usage: table [--from auto|csv|tsv|markdown|ir|ascii|ansi] --to csv|tsv|markdown|ir|ascii|ansi [--header|--no-header]\nInput format is detected when --from is omitted. Ambiguous input requires --from.\nAutodetection buffers stdin; explicit --from tsv retains fixed-width visual streaming.\nVisual output: --widths, --align, --overflow, --terminal-width, --color, --plain, --decimal-separator."); return Ok(()); }
             _ => return Err(format!("unknown option: {arg}")),
         }
     }
-    let from = from.ok_or("--from is required")?;
     let to = to.ok_or("--to is required")?;
-    if !["csv", "tsv", "markdown", "ir", "ascii", "ansi"].contains(&from.as_str()) { return Err("input formats: csv, tsv, markdown, ir, ascii, ansi".into()); }
     if !["csv", "tsv", "markdown", "ir", "ascii", "ansi"].contains(&to.as_str()) { return Err("output formats: csv, tsv, markdown, ir, ascii, ansi".into()); }
+    let autodetect = from.as_deref().is_none_or(|value| value == "auto");
+    let mut input = Vec::new();
+    let from = if autodetect {
+        io::stdin().read_to_end(&mut input).map_err(|e| e.to_string())?;
+        table::detect::detect(&input, glyphs.as_deref())?.to_owned()
+    } else { from.unwrap() };
+    if !["csv", "tsv", "markdown", "ir", "ascii", "ansi"].contains(&from.as_str()) { return Err("input formats: auto, csv, tsv, markdown, ir, ascii, ansi".into()); }
     if header_explicit && from != "csv" && from != "tsv" { return Err("--header and --no-header apply only to CSV or TSV input".into()); }
     let visual = to == "ascii" || to == "ansi";
     let visual_input = from == "ascii" || from == "ansi";
@@ -58,12 +63,11 @@ fn run() -> Result<(), String> {
             }
         }
     }
-    if from == "tsv" && visual {
+    if from == "tsv" && visual && !autodetect {
         eprintln!("table: visual output may clip, pad, or sanitize cell contents");
         return table::visual::render_tsv(to == "ascii", header, &visual_options);
     }
-    let mut input = Vec::new();
-    io::stdin().read_to_end(&mut input).map_err(|e| e.to_string())?;
+    if !autodetect { io::stdin().read_to_end(&mut input).map_err(|e| e.to_string())?; }
     let table = match from.as_str() {
         "ir" => decode(&input),
         "ascii" | "ansi" => table::visual_input::parse(std::str::from_utf8(&input).map_err(|_| "input is not UTF-8")?, from == "ansi", glyphs.as_deref()),

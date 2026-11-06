@@ -1,15 +1,31 @@
 # table
 
-`table` is an in-progress command-line converter for tabular formats. The current
-slice supports CSV, TSV, Markdown pipe tables and the project's [versioned
-intermediate representation](docs/intermediate-format.md). ASCII and ANSI visual output use the predecessor renderer. Visual table input
-is supported for a conservative subset and requires explicit loss acceptance.
+[![Mechatron Prime CI](https://img.shields.io/endpoint?url=https%3A%2F%2Fthelio-nixos.tail66c90.ts.net%2Fbadges%2Ftable.json&style=for-the-badge)](https://thelio-nixos.tail66c90.ts.net/mechatron-prime/)
+
+Convert tables between CSV, TSV, Markdown, ASCII and ANSI terminal tables.
+`table` detects the input format when it can and reports ambiguity when it
+cannot. A [versioned intermediate format](docs/intermediate-format.md) preserves
+cell contents and header presence between conversions.
+
+```sh
+printf 'name,count\nAlice,2\n' | table --to markdown
+# | name | count |
+# | --- | --- |
+# | Alice | 2 |
+```
+
+This project is under active development. Rust currently provides the complete
+CLI. Zig and Roc implementations are in progress; Roc is intended to become
+the default after matching the CLI behavior and platform checks. See
+[implementation parity](docs/implementation-parity.md).
+
+## Build and run
 
 Build with `./build` and run the complete current suite with `./test`. Both
 require Nix. The build publishes commands in `bin/<PF>/`; on Linux x86-64:
 
 ```sh
-printf 'name,count\nAlice,2\n' | bin/linux-amd64/table --from csv --to markdown
+printf 'name,count\nAlice,2\n' | bin/linux-amd64/table --to markdown
 ```
 
 The build also publishes `bin/<PF>/tsv-to-ansi-table`, the pinned predecessor's
@@ -22,23 +38,37 @@ first failure. `--all-implementations` selects the sole Rust implementation, and
 native execution remains a separate qualification. `./build --platform PF`
 selects one target.
 
-The Unix host build is dynamically linked to its Nix store runtime and is
-not a standalone distribution. Native Nix build and tests have been exercised
+Linux outputs use static musl builds. macOS outputs use the native system
+runtime. Native Nix build and tests have been exercised
 on Linux x86-64 and macOS ARM64. Publication through `./build` has been
-exercised on Linux x86-64. The Linux ARM64 converter and predecessor's Zig
-renderer have been cross-built, their headers inspected, and each executable
+exercised on Linux x86-64. Earlier GNU Linux ARM64 converter and predecessor Zig
+renderer builds had their headers inspected and each executable
 run separately under isolated QEMU. The converter's visual path was also run
 under QEMU with an explicit emulator shim for the renderer. Native ARM64 runtime
-testing remains open. The Windows cross-builds bundle
+testing, including the current musl ARM64 output, remains open. The Windows cross-builds bundle
 both executables and a renderer in `libexec` without requiring symlink support.
-The x86-64 bundle has been exercised under isolated Wine, including the
+An earlier x86-64 bundle was exercised under isolated Wine, including the
 published `bin/mswin-amd64` directory, but not on native Windows. The ARM64
 executables have been cross-built and identified as ARM64 PE files, but their
 UCRT linker mapping has not been tested on native Windows. The publisher uses
 regular executable files and retains the previous Windows publication for
 rollback. Bundles include dependency and Unicode license notices.
 
-Both formats must be specified: `csv`, `tsv`, `markdown`, `ir`, `ascii`, or `ansi`. CSV and TSV
+## Formats and detection
+
+Choose the destination with `--to csv|tsv|markdown|ir|ascii|ansi`. When `--from`
+is omitted (or set to `auto`), the converter examines the complete input. It
+recognizes a valid IR signature, Markdown table structure, boxed ASCII/ANSI
+tables, or a consistent multi-column CSV/TSV parse. Multiple matching formats,
+empty input and single-column delimited input require an explicit `--from`.
+Detection uses the source alone; the destination does not resolve ambiguity.
+Visual input still requires `--allow-lossy`. Use `--from` to override detection
+or preserve streaming: autodetection buffers stdin through EOF, while explicit
+`--from tsv` retains fixed-width visual streaming. Literal delimiter characters
+can make CSV and TSV both plausible, so automatic selection cannot establish
+the producer's intended format in every case.
+
+CSV and TSV
 treat the first row as a header by default; `--no-header` treats it as data.
 IR carries header presence. CSV and TSV do not, so choose the same header
 option when reading them back. Input must be UTF-8 and rectangular. CSV accepts
@@ -60,6 +90,8 @@ Input is currently buffered in memory. CSV, TSV and IR can contain arbitrary
 cell contents, including terminal control sequences; do not display untrusted
 output directly in a terminal. Visual output will require a separate terminal
 sanitization policy.
+
+## Terminal tables
 
 ASCII and ANSI output delegate to a pinned build of the predecessor's Rust
 renderer. They retain its width, alignment, overflow, glyph and color behavior;
@@ -105,7 +137,31 @@ runs the pinned predecessor's CLI checks for headers, options, colors, glyphs
 and fixed-width streaming against the compatibility executable. These checks
 are not a claim that visual tables recover clipped or padded source data.
 
-`./big_o`, `./mg` and `./bm` run the initial growth, allocation and cold-start
-probes. See
-[performance cases](docs/performance.md) for their coverage and the outstanding
-baseline and complete-suite integration work.
+## Tests and benchmarks
+
+`./test` is the complete current correctness suite, built through Nix. The CI
+manifest builds the Linux checks, Linux ARM64 cross target, macOS ARM64 package
+and both Windows targets from the exact pushed commit. Native Windows and Linux
+ARM64 runtime qualification remains open; cross-builds and emulator results are
+separate evidence.
+
+`./bm` compares the same six CLI workloads across Rust, Zig and Roc, with one-core
+and 12-core affinity cases. It requires every selected executable and checks
+complete output before recording timings. Until the Zig and Roc CLIs are
+complete, select the working subset explicitly:
+
+```sh
+./bm --implementation rust
+```
+
+To benchmark other optimized executables, set `TABLE_BENCHMARK_ZIG` and
+`TABLE_BENCHMARK_ROC` to their paths. The full suite refuses to silently skip a
+missing implementation. New measurements remain unbaselined until reviewed.
+`./big_o` and `./mg` measure input growth and Rust allocator usage. See
+[performance cases](docs/performance.md) for measurement boundaries and remaining
+gate integration work.
+
+## License
+
+[MIT](LICENSE). Bundles include notices for the predecessor renderer, its
+dependencies and Unicode data.

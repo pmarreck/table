@@ -15,6 +15,9 @@
   in {
     packages = forAll (system: let
       pkgs = import nixpkgs { inherit system; };
+      rocCompiler = pkgs.lib.findFirst (pkg: (pkg.pname or "") == "roc-nightly")
+        (throw "the pinned predecessor must provide its Roc compiler")
+        renderer.packages.${system}.default.nativeBuildInputs;
       publicationFixture = pkgs.runCommand "table-publication-fixture" { } ''
         mkdir -p "$out/bin" "$out/libexec" "$out/share/licenses/table"
         cat > "$out/bin/table" <<'EOF'
@@ -55,7 +58,7 @@ EOF
         version = "0.1.0";
         src = pkgs.lib.fileset.toSource {
           root = ./.;
-          fileset = pkgs.lib.fileset.unions [ ./Cargo.toml ./Cargo.lock ./LICENSE ./src ./tests ./build ];
+          fileset = pkgs.lib.fileset.unions [ ./Cargo.toml ./Cargo.lock ./LICENSE ./src ./tests ./scripts ./build ./profiling.json ./zig ./roc ];
         };
         cargoLock.lockFile = ./Cargo.lock;
         TEST_PUBLICATION_FIXTURE = "${publicationFixture}";
@@ -65,6 +68,10 @@ EOF
           for probe in table-perf table-memory table-startup; do
             mv "$out/bin/$probe${targetPkgs.stdenv.hostPlatform.extensions.executable}" "$out/libexec/$probe${targetPkgs.stdenv.hostPlatform.extensions.executable}"
           done
+          ${pkgs.lib.optionalString runChecks ''
+            install -m755 scripts/table-benchmark.py "$out/libexec/table-benchmark"
+            substituteInPlace "$out/libexec/table-benchmark" --replace-fail '#!/usr/bin/env python3' '#!${pkgs.python3}/bin/python3'
+          ''}
           cp "$TABLE_RENDERER" "$out/libexec/tsv-to-ansi-table${targetPkgs.stdenv.hostPlatform.extensions.executable}"
           ${if targetPkgs.stdenv.hostPlatform.isWindows then ''
             cp "$TABLE_RENDERER" "$out/bin/tsv-to-ansi-table.exe"
@@ -74,10 +81,20 @@ EOF
           ${notices}
         '';
         doCheck = runChecks;
-        nativeCheckInputs = [ pkgs.perl pkgs.file pkgs.python3 pkgs.cmark-gfm ];
+        nativeCheckInputs = [ pkgs.perl pkgs.file pkgs.python3 pkgs.cmark-gfm pkgs.zig_0_16 rocCompiler pkgs.nix ];
         postCheck = ''
           bash tests/build-publication.sh
+          bash tests/nix-roots.sh
+          zig test zig/intermediate.zig -O ReleaseSafe --cache-dir "$TMPDIR/zig-cache" --global-cache-dir "$TMPDIR/zig-global-cache"
+          export HOME="$TMPDIR/roc-home" XDG_CACHE_HOME="$TMPDIR/roc-cache"
+          mkdir -p "$HOME" "$XDG_CACHE_HOME"
+          roc check roc/test.roc
+          roc test roc/test.roc --no-cache
           "target/${targetPkgs.stdenv.hostPlatform.rust.rustcTarget}/release/table-memory" --self-test
+          python3 tests/profiling-declarations.py "target/${targetPkgs.stdenv.hostPlatform.rust.rustcTarget}/release/table-perf"
+          python3 tests/cli-conformance.py "target/${targetPkgs.stdenv.hostPlatform.rust.rustcTarget}/release/table" "$TABLE_RENDERER"
+          python3 tests/autodetect.py "target/${targetPkgs.stdenv.hostPlatform.rust.rustcTarget}/release/table"
+          python3 tests/benchmark-contract.py "target/${targetPkgs.stdenv.hostPlatform.rust.rustcTarget}/release/table"
           python3 tests/csv-oracle.py "target/${targetPkgs.stdenv.hostPlatform.rust.rustcTarget}/release/table"
           python3 tests/markdown-oracle.py "target/${targetPkgs.stdenv.hostPlatform.rust.rustcTarget}/release/table"
           (
@@ -102,9 +119,9 @@ EOF
       };
     in {
       profiling-tool = renderer.inputs.performance-profiling.packages.${system}.default;
-      default = package pkgs "${renderer.packages.${system}.rust}/bin/tsv-to-ansi-table-rust" true;
+      default = package (if pkgs.stdenv.hostPlatform.isLinux then pkgs.pkgsStatic else pkgs) "${renderer.packages.${system}.rust}/bin/tsv-to-ansi-table-rust" true;
     } // pkgs.lib.optionalAttrs (system == "x86_64-linux") {
-      linux-arm64-cross = package pkgs.pkgsCross.aarch64-multiplatform "${renderer.packages.${system}.linux-arm64}/bin/tsv-to-ansi-table-zig" false;
+      linux-arm64-cross = package pkgs.pkgsCross.aarch64-multiplatform-musl "${renderer.packages.${system}.linux-arm64}/bin/tsv-to-ansi-table-zig" false;
       windows-amd64-cross = package pkgs.pkgsCross.mingwW64 "${renderer.packages.${system}.windows-x86_64}/bin/tsv-to-ansi-table-zig.exe" false;
       windows-arm64-cross = let
         rust-bin = rust-overlay.lib.mkRustBin { } pkgs;

@@ -1,5 +1,10 @@
 # PLAN
 
+- [ ] Add conservative stdin format autodetection with explicit ambiguity errors and preserve explicit TSV streaming.
+- [ ] Establish a shared, implementation-independent CLI conformance suite and target matrix for Rust, Zig and Roc (context: docs/implementation-parity.md).
+- [ ] Implement the complete table CLI in Zig and qualify it against the shared suite and platform matrix.
+- [ ] Implement the complete table CLI in Roc and qualify it against the shared suite and platform matrix.
+- [ ] Make Roc the default implementation after compatibility and platform qualification, preserving explicit implementation selection.
 - [x] Implement and verify a versioned lossless intermediate representation and explicit CSV/TSV conversion (context: docs/intermediate-format.md; done 2026-11-05 11:05 EST; commit 4a0648d).
 - [x] Build and publish all five platform targets through Nix with isolated publication tests (done 2026-11-05 12:38 EST; commit c4d0553).
 - [ ] Qualify native Linux ARM64 and Windows x86-64/ARM64 runtime behavior, including the ARM64 UCRT mapping.

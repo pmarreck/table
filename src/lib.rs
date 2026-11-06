@@ -155,5 +155,6 @@ pub fn write_delimited(table: &Table, csv: bool) -> Result<String, &'static str>
 }
 
 pub mod markdown;
+pub mod detect;
 pub mod visual;
 pub mod visual_input;

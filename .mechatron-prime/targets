@@ -1,0 +1,5 @@
+checks.x86_64-linux.package
+packages.x86_64-linux.linux-arm64-cross
+packages.aarch64-darwin.default
+packages.x86_64-linux.windows-amd64-cross
+packages.x86_64-linux.windows-arm64-cross

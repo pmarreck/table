@@ -16,3 +16,8 @@ characters in data, before relying on it.
 Use Nix-controlled builds, one complete test entry point, and the shared project
 conventions. Treat custom borders, ANSI styling, quoted and multiline cells,
 format ambiguity and lossy display transformations as explicit design concerns.
+
+Maintain implementations of the same CLI in Rust, Zig and Roc. Each must meet
+the same documented behavior and platform qualification requirements. Make Roc
+the default when it meets those requirements; until then retain the working
+Rust default. This direction was confirmed by the owner on 2026-11-05.
