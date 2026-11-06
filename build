@@ -5,10 +5,22 @@ root=$PWD
 all_platforms=0
 target_override=''
 if [[ ${1:-} == canonize ]]; then
-    [[ $# == 2 && $2 == rust ]] || { echo 'table: only the rust implementation is available' >&2; exit 2; }
-    echo 'table: rust is the only implementation'
+    [[ $# == 2 ]] || { echo 'Usage: ./build canonize rust|zig|roc|luajit' >&2; exit 2; }
+    case "$2" in rust|zig|roc|luajit) ;; *) echo 'table: unknown implementation' >&2; exit 2 ;; esac
+    [[ ! -L CANONICAL_IMPL ]] || { echo 'table: refusing a symlinked selector' >&2; exit 1; }
+    if [[ ! -f CANONICAL_IMPL || "$(cat CANONICAL_IMPL)" != "$2" || $(wc -c < CANONICAL_IMPL) -gt $((${#2}+1)) ]]; then
+        [[ ! -L CANONICAL_IMPL ]] || { echo 'table: refusing a symlinked selector' >&2; exit 1; }
+        selection=$(mktemp "$root/.canonical.XXXXXXXX")
+        printf '%s\n' "$2" > "$selection"
+        mv "$selection" CANONICAL_IMPL
+    fi
+    echo "$2 implementation canonized. Rerun ./build to rebuild."
     exit 0
 fi
+[[ -f CANONICAL_IMPL && ! -L CANONICAL_IMPL ]] || { echo 'table: a regular CANONICAL_IMPL file is required' >&2; exit 2; }
+canonical=$(cat CANONICAL_IMPL)
+case "$canonical" in rust|zig|roc|luajit) ;; *) echo 'table: invalid CANONICAL_IMPL' >&2; exit 2 ;; esac
+[[ $(wc -c < CANONICAL_IMPL) -le $((${#canonical}+1)) ]] || { echo 'table: invalid multiline CANONICAL_IMPL' >&2; exit 2; }
 while (($#)); do
     arg=$1
     shift
@@ -28,6 +40,7 @@ case "$(uname -s):$(uname -m)" in
 esac
 build_windows() (
     set -euo pipefail
+    [[ $canonical == rust ]] || { echo "table: $canonical has not been qualified for Windows; select rust explicitly" >&2; exit 1; }
     pf=$1
     case "$pf" in
         mswin-amd64) attribute='.#packages.x86_64-linux.windows-amd64-cross'; pattern='PE32\+.*x86-64' ;;
@@ -127,7 +140,7 @@ build_one() (
     done
     tmp=$(mktemp -d "$root/.nix-out/$pf/.candidate.XXXXXXXX")
     attribute=".#packages.$system.default"
-    if [[ $host == linux-amd64 && $pf == linux-arm64 ]]; then attribute='.#linux-arm64-cross'; fi
+    if [[ $host == linux-amd64 && $pf == linux-arm64 && $canonical == rust ]]; then attribute='.#linux-arm64-cross'; fi
     nix build --out-link "$tmp/output" "$attribute"
     for command in table tsv-to-ansi-table; do
         file -Lb "$tmp/output/bin/$command" | grep -Eq "$pattern" || { echo "table: $command executable header does not match $pf" >&2; exit 1; }

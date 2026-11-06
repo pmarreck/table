@@ -6,6 +6,7 @@ typedef struct { unsigned char *data; size_t len; } TableBytes;
 typedef struct { TableBytes out, err; int status; } TableProcess;
 void table_free(void *); int table_read(TableBytes *); int table_write(int,const unsigned char *,size_t);
 const char *table_about(void); const char *table_renderer(void); uint64_t table_columns(void);
+int table_tty(void); uint64_t table_env_columns(void);
 int table_next(const unsigned char *,size_t,int32_t *); int table_white(int32_t); int table_safe(int32_t);
 int64_t table_width(const unsigned char *,size_t);
 int table_process(const char *,char *const *,const unsigned char *,size_t,int,TableProcess *);
@@ -250,7 +251,7 @@ local function render(data,inherit,ascii,header,options)
 end
 local function run()
     local from,to,glyphs; local header,header_explicit,allow,color=true,false,false,false; local opts={}; local i=1
-    local function auto_color() return tonumber(native.table_columns())>0 and not os.getenv('NO_COLOR') and os.getenv('TERM')~='dumb' end
+    local function auto_color() return native.table_tty()~=0 and not os.getenv('NO_COLOR') and os.getenv('TERM')~='dumb' end
     while i<=#arg do
         local a=arg[i]; i=i+1; local key,value=a:match('^([^=]+)=(.*)$'); key=key or a
         local function val() if value~=nil then return value end; local v=arg[i]; if not v then fail(key..' requires a value') end; i=i+1; return v end
@@ -277,7 +278,7 @@ local function run()
     if vis and not color then opts[#opts+1]='--color'; opts[#opts+1]=auto_color() and 'always' or 'never' end
     local explicit=false; for _,o in ipairs(opts) do if o=='--terminal-width' then explicit=true end end
     if vis and from~='tsv' and not explicit then
-        local c=os.getenv('COLUMNS') or ''; local good=c:match('^%s*%+?%d+$') and tonumber(c); if not good or good==0 or good>10000 then local n=tonumber(native.table_columns()); if n>0 then opts[#opts+1]='--terminal-width'; opts[#opts+1]=tostring(n) end end
+        local n=tonumber(native.table_env_columns()); if n==0 then n=tonumber(native.table_columns()) end; if n>0 then opts[#opts+1]='--terminal-width'; opts[#opts+1]=tostring(n) end
     end
     if from=='tsv' and vis and not auto then output(2,'table: visual output may clip, pad, or sanitize cell contents\n'); render(nil,true,to=='ascii',header,opts); return end
     s=s or input(); local t=parse(from,s,header,glyphs); local result

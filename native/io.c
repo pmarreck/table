@@ -65,9 +65,26 @@ uint64_t table_columns(void) {
     struct winsize size; return isatty(1)&&ioctl(1,TIOCGWINSZ,&size)==0?size.ws_col:0;
 #endif
 }
+int table_tty(void) {
+#ifdef _WIN32
+    DWORD mode; return GetConsoleMode(GetStdHandle(STD_OUTPUT_HANDLE),&mode)!=0;
+#else
+    return isatty(1);
+#endif
+}
 int table_next(const unsigned char *s,size_t n,int32_t *cp) { return (int)utf8proc_iterate(s,(utf8proc_ssize_t)n,cp); }
 int table_category(int32_t cp) { return utf8proc_category(cp); }
 int table_white(int32_t c) { return (c>=9&&c<=13)||c==32||c==0x85||c==0xa0||c==0x1680||(c>=0x2000&&c<=0x200a)||c==0x2028||c==0x2029||c==0x202f||c==0x205f||c==0x3000; }
+uint64_t table_env_columns(void) {
+    const char *s=getenv("COLUMNS"); if(!s) return 0;
+    size_t n=strlen(s),i=0;
+    while(i<n) { int32_t cp; int k=table_next((const unsigned char *)s+i,n-i,&cp); if(k<=0) return 0; if(!table_white(cp)) break; i+=(size_t)k; }
+    if(i<n&&s[i]=='+') i++;
+    if(i==n) return 0;
+    uint64_t value=0;
+    for(;i<n;i++) { if(s[i]<'0'||s[i]>'9') return 0; value=value*10+(unsigned)(s[i]-'0'); if(value>10000) return 0; }
+    return value;
+}
 int table_safe(int32_t cp) { int c=table_category(cp); return !(c>=24&&c<=26) && !(c==27&&cp!=0x200c&&cp!=0x200d&&!(cp>=0xe0020&&cp<=0xe007f)); }
 int64_t table_width(const unsigned char *s,size_t n) {
     size_t i=0; int32_t previous=0,state=0; int64_t total=0,cells=0;

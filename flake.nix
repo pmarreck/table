@@ -12,6 +12,10 @@
   outputs = { self, nixpkgs, renderer, rust-overlay }: let
     systems = [ "x86_64-linux" "aarch64-linux" "aarch64-darwin" ];
     forAll = nixpkgs.lib.genAttrs systems;
+    canonicalText = builtins.readFile ./CANONICAL_IMPL;
+    canonical = if builtins.match "(rust|zig|roc|luajit)\n?" canonicalText != null
+      then builtins.head (builtins.match "(rust|zig|roc|luajit)\n?" canonicalText)
+      else throw "CANONICAL_IMPL must contain rust, zig, roc or luajit";
   in {
     packages = forAll (system: let
       pkgs = import nixpkgs { inherit system; };
@@ -23,6 +27,26 @@
       pf = { x86_64-linux = "linux-amd64"; aarch64-linux = "linux-arm64"; aarch64-darwin = "macos-arm64"; }.${system};
       about = "table 0.1.0 — Convert tabular data; PF=${pf}${pkgs.lib.optionalString pkgs.stdenv.hostPlatform.isLinux " VARIANT=gnu"}";
       rendererBin = "${renderer.packages.${system}.rust}/bin/tsv-to-ansi-table-rust";
+      commonNotices = pkgs.runCommand "table-third-party-licenses" { } ''
+        {
+          cat ${./LICENSE}
+          for vendor in ${coreDeps} ${renderer.packages.${system}.rust.cargoDeps}; do
+            for crate in "$vendor"/*; do
+              [ -d "$crate" ] || continue
+              for license in "$crate"/LICENSE* "$crate"/COPYING*; do
+                [ -f "$license" ] || continue
+                printf '\n\n===== %s / %s =====\n\n' "''${crate##*/}" "''${license##*/}"
+                cat "$license"
+              done
+            done
+          done
+          cat ${unicodeSource}/LICENSE.md
+          cat ${renderer.inputs.random}/LICENSE
+          cat ${renderer.packages.${system}.default.ROC_PLATFORM}/THIRD_PARTY_LICENSES.md
+          ${rocCompiler}/bin/roc licenses
+          cat ${pkgs.luajit.src}/COPYRIGHT
+        } > "$out"
+      '';
       nativeIo = pkgs.stdenv.mkDerivation {
         pname = "table-native-io"; version = "0.1.0";
         src = ./native;
@@ -44,6 +68,8 @@
           } > "$out/bin/table-luajit"
           chmod +x "$out/bin/table-luajit"
           cp ${rendererBin} "$out/libexec/tsv-to-ansi-table"
+          mkdir -p "$out/share/licenses/table"
+          cp ${commonNotices} "$out/share/licenses/table/THIRD_PARTY_LICENSES.txt"
         '';
       };
       rocPackage = pkgs.stdenvNoCC.mkDerivation {
@@ -63,7 +89,11 @@
           roc test roc/main.roc --no-cache "''${flags[@]}"
           roc build roc/main.roc --opt=speed --target=${{ x86_64-linux = "x64musl"; aarch64-linux = "arm64musl"; aarch64-darwin = "arm64mac"; }.${system}} --output="$out/bin/table-roc" "''${flags[@]}"
         '';
-        installPhase = ''cp ${rendererBin} "$out/libexec/tsv-to-ansi-table"'';
+        installPhase = ''
+          cp ${rendererBin} "$out/libexec/tsv-to-ansi-table"
+          mkdir -p "$out/share/licenses/table"
+          cp ${commonNotices} "$out/share/licenses/table/THIRD_PARTY_LICENSES.txt"
+        '';
       };
       zigPackage = pkgs.stdenvNoCC.mkDerivation {
         pname = "table-zig"; version = "0.1.0";
@@ -77,7 +107,11 @@
           mkdir -p "$out/bin" "$out/libexec"
           zig cc -O3 -target "$target" native/entry.c native/io.c ${unicodeSource}/utf8proc.c core.o -I${unicodeSource} -DUTF8PROC_STATIC -DTABLE_RENDERER='"${rendererBin}"' -DTABLE_ABOUT='"table 0.1.0 — Convert tabular data; PF=${pf}${pkgs.lib.optionalString pkgs.stdenv.hostPlatform.isLinux " VARIANT=musl"}"' -o "$out/bin/table-zig"
         '';
-        installPhase = ''cp ${rendererBin} "$out/libexec/tsv-to-ansi-table"'';
+        installPhase = ''
+          cp ${rendererBin} "$out/libexec/tsv-to-ansi-table"
+          mkdir -p "$out/share/licenses/table"
+          cp ${commonNotices} "$out/share/licenses/table/THIRD_PARTY_LICENSES.txt"
+        '';
       };
       publicationFixture = pkgs.runCommand "table-publication-fixture" { } ''
         mkdir -p "$out/bin" "$out/libexec" "$out/share/licenses/table"
@@ -112,6 +146,7 @@ EOF
           cat "$cargoDeps/utf8proc-sys-0.1.2/utf8proc/LICENSE.md"
           printf '\n\n===== random renderer dependency =====\n\n'
           cat "${renderer.inputs.random}/LICENSE"
+          cat ${commonNotices}
         } > "$notice"
       '';
       package = targetPkgs: rendererBin: runChecks: targetPkgs.rustPlatform.buildRustPackage {
@@ -130,6 +165,8 @@ EOF
             mv "$out/bin/$probe${targetPkgs.stdenv.hostPlatform.extensions.executable}" "$out/libexec/$probe${targetPkgs.stdenv.hostPlatform.extensions.executable}"
           done
           ${pkgs.lib.optionalString runChecks ''
+            mv "$out/bin/table" "$out/bin/table-rust"
+            ln -s table-rust "$out/bin/table"
             ln -s ${zigPackage}/bin/table-zig "$out/bin/table-zig"
             ln -s ${rocPackage}/bin/table-roc "$out/bin/table-roc"
             ln -s ${luaPackage}/bin/table-luajit "$out/bin/table-luajit"
@@ -198,12 +235,24 @@ EOF
           platforms = if targetPkgs.stdenv.hostPlatform.system == "aarch64-windows" then [ "aarch64-windows" ] else pkgs.lib.platforms.all;
         };
       };
+      rustPackage = package (if pkgs.stdenv.hostPlatform.isLinux then pkgs.pkgsStatic else pkgs) "${renderer.packages.${system}.rust}/bin/tsv-to-ansi-table-rust" true;
+      bundle = implementation: pkgs.symlinkJoin {
+        name = "table-${implementation}-default";
+        paths = [ rustPackage ];
+        postBuild = ''
+          unlink "$out/bin/table"
+          ln -s table-${implementation} "$out/bin/table"
+          "$out/bin/table" --about | grep -Fq 'PF=${pf}'
+        '';
+        meta = { license = pkgs.lib.licenses.mit; mainProgram = "table"; };
+      };
     in {
       luajit = luaPackage;
       roc = rocPackage;
       zig = zigPackage;
+      rust = rustPackage;
       profiling-tool = renderer.inputs.performance-profiling.packages.${system}.default;
-      default = package (if pkgs.stdenv.hostPlatform.isLinux then pkgs.pkgsStatic else pkgs) "${renderer.packages.${system}.rust}/bin/tsv-to-ansi-table-rust" true;
+      default = bundle canonical;
     } // pkgs.lib.optionalAttrs (system == "x86_64-linux") {
       linux-arm64-cross = package pkgs.pkgsCross.aarch64-multiplatform-musl "${renderer.packages.${system}.linux-arm64}/bin/tsv-to-ansi-table-zig" false;
       windows-amd64-cross = package pkgs.pkgsCross.mingwW64 "${renderer.packages.${system}.windows-x86_64}/bin/tsv-to-ansi-table-zig.exe" false;

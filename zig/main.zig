@@ -9,6 +9,8 @@ extern fn table_free(?[*]u8) void;
 extern fn table_about() [*:0]const u8;
 extern fn table_renderer() [*:0]const u8;
 extern fn table_columns() u64;
+extern fn table_tty() c_int;
+extern fn table_env_columns() u64;
 extern fn table_process([*:0]const u8, [*:null]const ?[*:0]u8, [*]const u8, usize, c_int, *Process) c_int;
 extern fn getenv([*:0]const u8) ?[*:0]const u8;
 const help = "Usage: table [--from auto|csv|tsv|markdown|ir|ascii|ansi] --to csv|tsv|markdown|ir|ascii|ansi [--header|--no-header]\nInput format is detected when --from is omitted. Ambiguous input requires --from.\nAutodetection buffers stdin; explicit --from tsv retains fixed-width visual streaming.\nVisual output: --widths, --align, --overflow, --terminal-width, --color, --plain, --decimal-separator.\n";
@@ -18,7 +20,7 @@ fn input(c: *core.Context) ![]const u8 {
     if (table_read(&bytes) != 0) return c.bad("input read failed"); defer table_free(bytes.data);
     return c.a.dupe(u8, bytes.data.?[0..bytes.len]);
 }
-fn color() bool { return table_columns() > 0 and getenv("NO_COLOR") == null and (if (getenv("TERM")) |term| !eq(std.mem.span(term), "dumb") else true); }
+fn color() bool { return table_tty() != 0 and getenv("NO_COLOR") == null and (if (getenv("TERM")) |term| !eq(std.mem.span(term), "dumb") else true); }
 fn format(s: []const u8) bool { for ([_][]const u8{ "csv", "tsv", "markdown", "ir", "ascii", "ansi" }) |f| { if (eq(s, f)) return true; } return false; }
 fn render(c: *core.Context, data: []const u8, inherit: bool, ascii: bool, header: bool, options: []const []const u8) ![]const u8 {
     const program = table_renderer(); var args: std.ArrayList(?[*:0]u8) = .empty;
@@ -74,8 +76,9 @@ fn run(c: *core.Context, args: []const []const u8) !void {
     if (vis and !explicit_color) { try opts.append(c.a, "--color"); try opts.append(c.a, if (color()) "always" else "never"); }
     var explicit_width = false; for (opts.items) |o| { if (eq(o, "--terminal-width")) explicit_width = true; }
     if (vis and !eq(from, "tsv") and !explicit_width) {
-        const columns: usize = if (getenv("COLUMNS")) |v| std.fmt.parseInt(usize, std.mem.trimStart(u8, std.mem.span(v), " \t\n\r"), 10) catch 0 else 0;
-        if (columns == 0 or columns > 10000) { const width = table_columns(); if (width > 0) { try opts.append(c.a, "--terminal-width"); try opts.append(c.a, try std.fmt.allocPrint(c.a, "{d}", .{width})); } }
+        const columns = table_env_columns();
+        const width = if (columns > 0 and columns <= 10000) columns else table_columns();
+        if (width > 0) { try opts.append(c.a, "--terminal-width"); try opts.append(c.a, try std.fmt.allocPrint(c.a, "{d}", .{width})); }
     }
     if (eq(from, "tsv") and vis and !auto) {
         try output(c, 2, "table: visual output may clip, pad, or sanitize cell contents\n");

@@ -74,6 +74,33 @@ for mode in ("never", "always", "auto"):
 for data in (b"", b"a\n", b"a,b\tc\n1,2\t3\n", b"\x1cT1broken", b"\xff"):
     compare(["--to", "csv"], data)
 
+# Carry the visual-parser regressions through the public CLI of every language.
+visual_cases = [
+    "+---+\n| | |\n+---+\n", "+---+\n| x |\n+----+\n", "+---+\n| 界 |\n+---+\n",
+    "+---+\n| x |\n+---+\n| y |\n+---+\n| z |\n+---+\n",
+    "\x1b]0;evil\x07+---+\n| x |\n+---+\n", "\x1b[2J+---+\n| x |\n+---+\n",
+    "\x1b[31m+---+\x1b[0m\n| x |\n+---+\n", "┌───┐───┐\n│ a │ b │\n└───┴───┘\n",
+    "+---+\n| x |\n+---+\n\x1b[1A", "┌──────┐\n│ 界 é │\n└──────┘\n", "┌───┐\n│ \u202ex │\n└───┘\n",
+]
+for data in visual_cases:
+    for format in ("ascii", "ansi"):
+        compare(["--from", format, "--to", "csv", "--allow-lossy"], data.encode())
+for data, glyphs in (("*~~~*\n! x !\n*~~~*\n", "*,*,*,*,*,*,*,*,*,~, !".replace(" ", "")),
+                     ("╭───╮\n│ x │\n╰───╯\n", "╭,┬,╮,├,┼,┤,╰,┴,╯,─,│"),
+                     ("A---C\n! x !\nG---I\n", "A,B,C,D,E,F,G,H,I,-,!")):
+    compare(["--from", "ansi", "--to", "csv", "--allow-lossy", "--visual-glyphs", glyphs], data.encode())
+
+for value in (" ", "\u00a0", "\u0085", "\u2003", "\u200d", "\u0301", "👩‍💻", "🇺🇸", "1️⃣", "\u2028", "\u202e"):
+    buffer = io.StringIO(newline="")
+    csv.writer(buffer, lineterminator="\n").writerows([["h", "value"], ["x", value]])
+    data = buffer.getvalue().encode()
+    for destination in formats:
+        compare(["--from", "csv", "--to", destination], data)
+    for visual_format in ("ascii", "ansi"):
+        status, rendered, _ = run(binaries[0], ["--from", "csv", "--to", visual_format], data)
+        assert status == 0
+        compare(["--from", visual_format, "--to", "csv", "--allow-lossy"], rendered)
+
 # Self-identification has deliberately different ABI metadata where applicable.
 for binary in binaries:
     status, about, err = run(binary, ["--about"], b"")

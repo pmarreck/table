@@ -153,7 +153,7 @@ fn buffered_visual_output_uses_parent_terminal_width() {
     use std::fs::File;
     use std::io::Read;
     use std::os::fd::FromRawFd;
-    for (columns, explicit, expected) in [(None, None, 20), (Some("30"), None, 30), (Some("30"), Some("14"), 14), (Some("bad"), None, 20)] {
+    for (columns, explicit, expected) in [(None, None, 20), (Some("30"), None, 30), (Some("30"), Some("14"), 14), (Some("bad"), None, 20), (Some(" 30"), None, 30), (Some("\u{a0}+30"), None, 30), (Some("30 "), None, 20), (Some("1_0"), None, 20)] {
     let mut master = -1;
     let mut slave = -1;
     let mut size = libc::winsize { ws_row: 24, ws_col: 20, ws_xpixel: 0, ws_ypixel: 0 };

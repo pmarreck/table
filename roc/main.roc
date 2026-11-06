@@ -12,6 +12,7 @@ import pf.Path
 import pf.Stdin
 import pf.Stdout
 import pf.Stderr
+import unicode.Scalar
 
 main! = |native_args| {
 	var $args = []
@@ -141,12 +142,10 @@ run! = |args| {
 		$opts = $opts.append("--color").append(if auto_color!() "always" else "never")
 	}
 	if vis and $from != "tsv" and !$opts.contains("--terminal-width") {
-		columns = U64.from_str(Env.var_str!("COLUMNS") ?? "") ?? 0
-		if columns == 0 or columns > 10000 {
-			width = Console.width!()
-			if width > 0 {
-				$opts = $opts.append("--terminal-width").append(width.to_str())
-			}
+		columns = env_columns(Env.var_str!("COLUMNS") ?? "")
+		width = if columns > 0 and columns <= 10000 columns else Console.width!()
+		if width > 0 {
+			$opts = $opts.append("--terminal-width").append(width.to_str())
 		}
 	}
 	if $from == "tsv" and vis and !auto {
@@ -163,6 +162,25 @@ run! = |args| {
 		render!(Model.render_input(table)?.to_utf8(), False, $to == "ascii", Model.has_header(table), $opts)?
 	} else Model.write(table, $to)?
 	Stdout.write_bytes!(output)
+}
+
+env_columns = |text| {
+	var $started = False
+	var $value = ""
+	for item in Scalar.iter(text) {
+		cp = Scalar.to_u32(item.scalar)
+		white = (cp >= 9 and cp <= 13) or cp == 32 or cp == 0x85 or cp == 0xa0 or cp == 0x1680 or (cp >= 0x2000 and cp <= 0x200a) or cp == 0x2028 or cp == 0x2029 or cp == 0x202f or cp == 0x205f or cp == 0x3000
+		if $started or !white {
+			$started = True
+			$value = $value.concat(Scalar.to_str(item.scalar) ?? "")
+		}
+	}
+	bytes = $value.to_utf8()
+	digits = if bytes.first() == Ok(43) bytes.drop_first(1) else bytes
+	if digits.len() == 0 or !digits.all(|b| b >= 48 and b <= 57) {
+		return 0
+	}
+	U64.from_str(Str.from_utf8_lossy(digits)) ?? 0
 }
 
 renderer! = || {

@@ -4,6 +4,7 @@ scratch=$(mktemp -d "${TMPDIR:?}/table-publication.XXXXXXXX")
 trap 'rm -rf -- "$scratch"' EXIT
 mkdir -p "$scratch/project" "$scratch/tools"
 cp build "$scratch/project/build"
+printf 'rust\n' > "$scratch/project/CANONICAL_IMPL"
 cat > "$scratch/tools/uname" <<'STUB'
 #!/usr/bin/env bash
 if [[ $1 == -s ]]; then echo Linux; else echo x86_64; fi
@@ -39,6 +40,15 @@ done
 chmod +x "$scratch/tools/"*
 export PATH="$scratch/tools:$PATH" FAKE_PRODUCT="${TEST_PUBLICATION_FIXTURE:?}" BUILD_LOG="$scratch/build.log" ROOT_LOG="$scratch/roots.log"
 cd "$scratch/project"
+./build canonize rust
+[[ $(cat CANONICAL_IMPL) == rust && ! -e "$BUILD_LOG" ]]
+./build canonize roc
+[[ $(cat CANONICAL_IMPL) == roc && ! -e "$BUILD_LOG" && ! -e bin ]]
+if ./build canonize unknown; then echo 'unknown implementation was accepted' >&2; exit 1; fi
+[[ $(cat CANONICAL_IMPL) == roc ]]
+printf 'rust\n\n' > CANONICAL_IMPL
+if ./build; then echo 'multiline selector was accepted' >&2; exit 1; fi
+./build canonize rust
 ./build
 [[ $(readlink bin/linux-amd64/table) == ../../.nix-out/linux-amd64/release/bin/table ]]
 [[ $(readlink bin/linux-amd64/tsv-to-ansi-table) == ../../.nix-out/linux-amd64/release/bin/tsv-to-ansi-table ]]

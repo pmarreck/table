@@ -57,10 +57,8 @@ fn run() -> Result<(), String> {
     }
     if visual && from != "tsv" && !visual_options.iter().any(|arg| arg == "--terminal-width") {
         let columns = std::env::var("COLUMNS").ok().and_then(|s| s.trim_start().parse::<usize>().ok()).filter(|n| *n > 0 && *n <= 10000);
-        if columns.is_none() {
-            if let Some(width) = terminal_width() {
-                visual_options.extend(["--terminal-width".into(), width.to_string()]);
-            }
+        if let Some(width) = columns.or_else(|| terminal_width().map(usize::from)) {
+            visual_options.extend(["--terminal-width".into(), width.to_string()]);
         }
     }
     if from == "tsv" && visual && !autodetect {
