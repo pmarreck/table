@@ -178,8 +178,9 @@ and downloading preserves exact bytes. The preview itself is not an IR encoding.
 checks, stale-result protection, inert HTML, local-only requests and mobile
 layout. Browser tests replace the clipboard with a collecting adapter.
 GitHub Actions publishes the checked static artifact to Pages; Mechatron remains
-the project's CI. No server, analytics, external fonts or saved table history is
-involved.
+the project's CI. The app has no conversion backend, analytics, external fonts
+or saved table history. Browser input is limited to 8 MiB; use the CLI for larger
+tables.
 
 The web app uses the **Rust conversion core**, with the pinned renderer linked
 as a common pure Zig library. Both candidate modules run the same browser ABI.
@@ -189,7 +190,7 @@ one-core and 12-core affinity settings and native CLI output verification.
 Measured November 7, 2026 on a Threadripper 3990X with Chromium 149.0.7827.55,
 Rust 1.97.1 and Zig 0.16.0, seed `20261107`. Each entry below is the median
 milliseconds per conversion for **one-core / 12-core affinity**, using 4,096
-three-column data rows. Twelve warmups precede nine batched samples. Timing
+three-column ASCII data rows. Twelve warmups precede nine batched samples. Timing
 includes the WASM ABI, conversion and owned output copy; it excludes fixture
 generation, validation, compilation, browser startup and network loading.
 
