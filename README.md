@@ -162,7 +162,7 @@ are not a claim that visual tables recover clipped or padded source data.
 implementation runs the same 12 CLI integration tests, format-pair checks,
 autodetection checks, independent CSV and GFM Markdown oracles, and benchmark
 fixture checks. The direct parity corpus compares stdout, stderr and exit status
-for 496 cases, including malformed input and randomized quoted/control-character
+for 858 cases, including malformed input and randomized quoted/control-character
 cells. `--about` is checked separately because ABI/runtime metadata can differ.
 Finite tests establish agreement for those cases, not a universal proof. The CI
 manifest builds the Linux checks, Linux ARM64 cross target, macOS ARM64 package
@@ -179,7 +179,7 @@ Use `./bm --implementation rust|zig|roc|luajit` for an explicit subset. The
 
 ### Preliminary measurements
 
-Measured on Linux x86-64 using code from commit `e98d1a8`, seed `20261106`, with
+Measured on Linux x86-64 using code from commit `a7c46aa`, seed `20261106`, with
 the pinned optimized toolchains and LuaJIT benchmark adapter. Each cell is the median milliseconds for **one-core /
 12-core affinity**, from five fresh CLI processes. Startup converts one data row;
 the other workloads use 4,096 data rows. Timing includes process launch, conversion,
@@ -187,25 +187,25 @@ pipe transfer and exit; fixture construction and verification are excluded.
 
 | Workload | Rust | Zig | Roc | LuaJIT |
 |---|---:|---:|---:|---:|
-| Startup | 0.67 / 0.95 | noisy / 1.05 | 0.84 / 0.66 | 1.97 / 1.80 |
-| CSV → TSV | 5.35 / 2.21 | noisy / 1.70 | 4.95 / 4.77 | 12.25 / 12.55 |
-| CSV → IR | 5.19 / 2.14 | noisy / 1.98 | 3.84 / 3.49 | 14.18 / 13.27 |
-| Markdown → CSV | 5.90 / 2.80 | 5.69 / 2.63 | 10.13 / 10.63 | 56.00 / 61.16 |
-| ASCII → CSV | 11.54 / 4.69 | 6.06 / 3.17 | 40.11 / 38.97 | 47.85 / 51.29 |
-| Autodetect CSV | 11.04 / 6.41 | 3.07 / 3.93 | 9.34 / 9.28 | 25.70 / 29.96 |
+| Startup | 0.66 / 0.85 | 0.61 / 1.03 | 0.69 / 0.98 | 1.83 / 2.14 |
+| CSV → TSV | 2.26 / 2.72 | 1.51 / 2.66 | 4.90 / 5.32 | 15.50 / 12.63 |
+| CSV → IR | 2.18 / 3.39 | 1.61 / 2.82 | 3.64 / 5.80 | 12.27 / 14.43 |
+| Markdown → CSV | 2.78 / 3.85 | 2.41 / 3.38 | 10.03 / 10.38 | 56.32 / 56.94 |
+| ASCII → CSV | 4.69 / 5.76 | 2.96 / 4.69 | 5.78 / 7.11 | 47.53 / 48.61 |
+| Autodetect CSV | 5.45 / 5.77 | 2.87 / 3.60 | 8.94 / 10.00 | 24.48 / 25.43 |
 
-Of 48 cases, 45 are **UNBASELINED**. The three one-core Zig cases marked
-**noisy** remained **INCONCLUSIVE** after the runner's one permitted retry;
-their timings are omitted. All measured outputs passed verification. The
+All 48 cases are **UNBASELINED**, with verified output and one attempt each. The
 12-core setting is an affinity set, not a claim
 that these algorithms use 12 threads. Shared-host scheduling and runtime/JIT
 startup affect these observations. They compare these implementations and
 fixtures, not the languages generally; no baseline was automatically accepted.
 
-Roc's ASCII input cost comes largely from rebuilding each row as character
-strings before splitting it, plus Unicode safety and display-width work.
-[Diagnostic measurements](docs/roc-ascii-performance.md) isolate those costs;
-the diagnostic bypasses are not part of the shipped converter.
+Roc's optimized ASCII input path splits rows directly and uses byte widths only
+after proving a cell contains printable ASCII. On one core, the 4,096-row
+ASCII → CSV fixture improved from 41.11 ms to 5.78 ms, about **7.1× faster**.
+Unicode validation and width calculation remain the fallback for other cells.
+[Measurements and qualifications](docs/roc-ascii-performance.md) include the
+original diagnostic experiments and the production optimization.
 
 `./big_o` and `./mg` currently measure Rust input growth and allocator usage.
 See [performance cases](docs/performance.md) for coverage and remaining gates.

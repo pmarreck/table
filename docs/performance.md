@@ -99,9 +99,26 @@ outside each timed child launch. There were 45 UNBASELINED cases and three
 INCONCLUSIVE cases: one-core Zig startup, CSV/TSV and CSV/IR. Each inconclusive
 case exhausted its one permitted retry because of sample variation; the other
 cases used one attempt. Every measured output passed verification. The README
-publishes medians only for the valid observations. Exit status 3 reports these
+published medians only for the valid observations. Exit status 3 reports these
 unbaselined/inconclusive outcomes, rather than a passed performance gate.
 
 The [Roc ASCII diagnosis](roc-ascii-performance.md) uses separate diagnostic
 definitions and a separate external history project. Disabled-check experiments
 are not production candidates or accepted performance baselines.
+
+At code commit `a7c46aa`, Roc visual parsing was optimized using direct row
+splitting, a guarded printable-ASCII path and escape-free input passthrough.
+The complete 48-case matrix was refreshed with the same adapter, definitions,
+seed and sizes. All 48 observations were UNBASELINED, with verified output and
+one attempt each. The README now shows these newer medians. The original Roc
+binary was also measured on all 12 Roc cases before and after the optimized
+matrix, retaining all 72 observations in external history. These measurements
+used source changes subsequently committed as `a7c46aa`; binary hashes identify
+the exact artifacts. No baseline was accepted.
+
+An initial follow-up of 12 observations mixed IR and ASCII workloads in a fixed
+binary order. A subsequent 16-observation check separated workloads and used
+balanced original/optimized ordering. The large 12-core-affinity IR gap from
+the matrix did not repeat in that balanced check; the ASCII speedup persisted.
+All follow-ups remain in external history, including one original IR timing
+retry. See the Roc diagnosis for every series and its limits.
