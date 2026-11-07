@@ -31,6 +31,19 @@ local expected=H.checked(renderer,{'--ascii','--color','never','--terminal-width
 local rendered=run({'--from','tsv','--to','ascii','--color','never','--terminal-width','80'},tsv)
 success(rendered); H.equal(rendered.stdout,expected)
 H.stream(binary)
+-- Exhaust the ASCII cell domain: controls and delimiters must never use a
+-- printable-ASCII shortcut. CSV quoting and trimmed spaces have fixed oracles.
+for code=0,127 do
+    local cell=string.char(code)
+    local visual='+---+\n| '..cell..' |\n+---+\n'
+    for _,format in ipairs({'ascii','ansi'}) do
+        local result=run({'--from',format,'--to','csv','--allow-lossy'},visual)
+        if code>=32 and code<=126 and cell~='|' then
+            success(result)
+            H.equal(result.stdout,H.csv({{cell==' ' and '' or cell}}),'ASCII visual cell '..code)
+        else failure(result) end
+    end
+end
 for _,test in ipairs({
     {{'--from','csv','--to','tsv'},'head\n"line\nline"\n'},
     {{'--from','csv','--to','csv'},'a,b\n1\n'},

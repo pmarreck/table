@@ -1,5 +1,6 @@
 # PLAN
 
+- [ ] Optimize Roc visual parsing while preserving shared behavior and measure before/after CLI timings.
 - [x] Remove all Python project tooling and dependencies; LuaJIT harnesses retain the shared suite, independent CSV/GFM oracles and 48 benchmark cases (done 2026-11-06 13:30 EST; commit e98d1a8).
 - [x] Why is Roc ASCII-to-CSV slower? Answer: row reconstruction costs about 17 ms of a 39 ms run; Unicode width and safety add about 10 ms and 4 ms in separate ablations; diagnostic bypasses are not shipped (context: docs/roc-ascii-performance.md; done 2026-11-06 13:36 EST; code commit e98d1a8).
 - [x] Establish one acceptance/parity suite for all four CLIs with explicit platform qualification gaps (context: docs/implementation-parity.md; done 2026-11-06 09:35 EST; commit f4698fe).

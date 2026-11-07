@@ -196,7 +196,7 @@ local function visual(s,ansi,spec)
     local rows,header,divider={},false,false; local v=glyphs[11]
     for j=2,#ls-1 do local line=ls[j]
         if line:sub(1,#v)==v then
-            if line:sub(-#v)~=v then fail('invalid table row boundary') end
+            if #line<2*#v or line:sub(-#v)~=v then fail('invalid table row boundary') end
             local fields=split(line:sub(#v+1,-#v-1),v); if #fields~=#widths then fail('ambiguous vertical delimiter in table row') end
             for k,f in ipairs(fields) do
                 for _,c in ipairs(chars(f)) do if native.table_safe(c[2])==0 then fail('control or unsafe format character in visual cell') end end

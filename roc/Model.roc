@@ -354,6 +354,9 @@ safe = |s| Scalar.iter(s).fold(
 scalar_text = |s| Scalar.iter(s).fold([], |out, v| out.append(Scalar.to_str(v.scalar) ?? ""))
 
 strip_sgr = |s, ansi| {
+	if !s.contains("\u(1b)") {
+		return Ok(s)
+	}
 	b = s.to_utf8()
 	var $i = 0
 	var $out = []
@@ -446,26 +449,29 @@ visual = |source, ansi, spec| {
 	var $divider = False
 	v = g.get(10) ?? ""
 	for line in ls.drop_first(1).drop_last(1) {
-		c = scalar_text(line)
-		if c.first() == Ok(v) {
-			if c.last() != Ok(v) {
+		parts = line.split_on(v)
+		if line != "" and parts.first() == Ok("") {
+			if parts.len() < 3 or parts.last() != Ok("") {
 				return Err(Invalid("invalid table row boundary"))
 			}
-			fields = Str.join_with(c.drop_first(1).drop_last(1), "").split_on(v)
+			fields = parts.drop_first(1).drop_last(1)
 			if fields.len() != widths.len() {
 				return Err(Invalid("ambiguous vertical delimiter in table row"))
 			}
 			var $row = []
 			for i in 0..<fields.len() {
 				field = fields.get(i) ?? ""
-				if !safe(field) {
+				b = field.to_utf8()
+				# Only printable ASCII has one byte per cell and no unsafe controls.
+				ascii = b.all(|byte| byte >= 32 and byte <= 126)
+				if !ascii and !safe(field) {
 					return Err(Invalid("control or unsafe format character in visual cell"))
 				}
-				if Ok(Text.width(field)) != widths.get(i) or field.to_utf8().first() != Ok(32) or field.to_utf8().last() != Ok(32) {
+				width = if ascii b.len() else Text.width(field)
+				if Ok(width) != widths.get(i) or b.first() != Ok(32) or b.last() != Ok(32) {
 					return Err(Invalid("table row does not match border widths"))
 				}
 				var $start = 0
-				b = field.to_utf8()
 				var $end = b.len()
 				while $start < $end and b.get($start) == Ok(32) {
 					$start = $start + 1

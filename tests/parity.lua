@@ -85,5 +85,31 @@ for _,binary in ipairs(binaries) do
     local about=run(binary,{'--about'},'')
     assert(about.rc==0 and about.stderr=='' and about.stdout:find('PF=',1,true) and about.stdout:match('^[^\n]+\n$'))
 end
-assert(count==496,'parity corpus lost cases')
+-- Exhaust ASCII dispatch and compare exact diagnostics for malformed boundaries.
+for code=0,127 do
+    local data='+---+\n| '..string.char(code)..' |\n+---+\n'
+    for _,format in ipairs({'ascii','ansi'}) do compare({'--from',format,'--to','csv','--allow-lossy'},data) end
+end
+for _,row in ipairs({'','|','||','| x','x |','| x ||','| x |\n'}) do
+    local data='+---+\n'..row..'\n+---+\n'
+    for _,format in ipairs({'ascii','ansi'}) do compare({'--from',format,'--to','csv','--allow-lossy'},data) end
+end
+for _,format in ipairs({'ascii','ansi'}) do
+    compare({'--from',format,'--to','csv','--allow-lossy'},'┌───┐\n│\n└───┘\n')
+end
+for _,row in ipairs({'é x é','é'}) do
+    compare({'--from','ansi','--to','csv','--allow-lossy','--visual-glyphs','*,*,*,*,*,*,*,*,*,~,é'},'*~~~*\n'..row..'\n*~~~*\n')
+end
+-- Exercise Unicode fallback after ASCII prefixes around common scan boundaries.
+for _,length in ipairs({0,1,15,16,17,31,32,33,63,64,65}) do
+    for _,suffix in ipairs({'é','é','界','👩‍💻'}) do
+        local data=H.csv({{'h'},{string.rep('a',length)..suffix..'z'}})
+        for _,format in ipairs({'ascii','ansi'}) do
+            local rendered=run(binaries[1],{'--from','csv','--to',format,'--color','never','--terminal-width','512'},data)
+            assert(rendered.rc==0)
+            compare({'--from',format,'--to','csv','--allow-lossy'},rendered.stdout)
+        end
+    end
+end
+assert(count==858,'parity corpus lost cases')
 print((diagnostic and 'Diagnostic' or 'Full')..' parity: '..count..' cases agree across '..#binaries..' CLIs')
