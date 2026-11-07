@@ -6,6 +6,21 @@
 #include <string.h>
 #include <errno.h>
 #include <utf8proc.h>
+/* The WASM build exposes only this portable Unicode boundary. */
+int table_next(const unsigned char *s,size_t n,int32_t *cp) { return (int)utf8proc_iterate(s,(utf8proc_ssize_t)n,cp); }
+int table_category(int32_t cp) { return utf8proc_category(cp); }
+int table_white(int32_t c) { return (c>=9&&c<=13)||c==32||c==0x85||c==0xa0||c==0x1680||(c>=0x2000&&c<=0x200a)||c==0x2028||c==0x2029||c==0x202f||c==0x205f||c==0x3000; }
+int table_safe(int32_t cp) { int c=table_category(cp); return !(c>=24&&c<=26) && !(c==27&&cp!=0x200c&&cp!=0x200d&&!(cp>=0xe0020&&cp<=0xe007f)); }
+int64_t table_width(const unsigned char *s,size_t n) {
+    size_t i=0; int32_t previous=0,state=0; int64_t total=0,cells=0;
+    while(i<n) { int32_t cp; int k=table_next(s+i,n-i,&cp); if(k<=0) return -1;
+        if(i&&utf8proc_grapheme_break_stateful(previous,cp,&state)) { total+=cells; cells=0; }
+        int category=table_category(cp); int w=(category==6||category==8||category==27)?0:utf8proc_charwidth(cp);
+        if(w<0) w=0; if(cp==0xfe0f||cp==0x20e3||(cp>=0x1f1e6&&cp<=0x1f1ff)) w=2;
+        if(w>cells) cells=w; previous=cp; i+=(size_t)k;
+    } return total+cells;
+}
+#ifndef TABLE_UNICODE_ONLY
 #ifdef _WIN32
 #include <windows.h>
 #include <io.h>
@@ -72,9 +87,6 @@ int table_tty(void) {
     return isatty(1);
 #endif
 }
-int table_next(const unsigned char *s,size_t n,int32_t *cp) { return (int)utf8proc_iterate(s,(utf8proc_ssize_t)n,cp); }
-int table_category(int32_t cp) { return utf8proc_category(cp); }
-int table_white(int32_t c) { return (c>=9&&c<=13)||c==32||c==0x85||c==0xa0||c==0x1680||(c>=0x2000&&c<=0x200a)||c==0x2028||c==0x2029||c==0x202f||c==0x205f||c==0x3000; }
 uint64_t table_env_columns(void) {
     const char *s=getenv("COLUMNS"); if(!s) return 0;
     size_t n=strlen(s),i=0;
@@ -84,16 +96,6 @@ uint64_t table_env_columns(void) {
     uint64_t value=0;
     for(;i<n;i++) { if(s[i]<'0'||s[i]>'9') return 0; value=value*10+(unsigned)(s[i]-'0'); if(value>10000) return 0; }
     return value;
-}
-int table_safe(int32_t cp) { int c=table_category(cp); return !(c>=24&&c<=26) && !(c==27&&cp!=0x200c&&cp!=0x200d&&!(cp>=0xe0020&&cp<=0xe007f)); }
-int64_t table_width(const unsigned char *s,size_t n) {
-    size_t i=0; int32_t previous=0,state=0; int64_t total=0,cells=0;
-    while(i<n) { int32_t cp; int k=table_next(s+i,n-i,&cp); if(k<=0) return -1;
-        if(i&&utf8proc_grapheme_break_stateful(previous,cp,&state)) { total+=cells; cells=0; }
-        int category=table_category(cp); int w=(category==6||category==8||category==27)?0:utf8proc_charwidth(cp);
-        if(w<0) w=0; if(cp==0xfe0f||cp==0x20e3||(cp>=0x1f1e6&&cp<=0x1f1ff)) w=2;
-        if(w>cells) cells=w; previous=cp; i+=(size_t)k;
-    } return total+cells;
 }
 const char *table_renderer(void) {
     static char path[32768]; size_t n=0;
@@ -144,3 +146,4 @@ fail:
     if(in) fclose(in); if(out) fclose(out); if(err) fclose(err);
     free(r->out.data); free(r->err.data); memset(r,0,sizeof(*r)); return -1;
 }
+#endif /* TABLE_UNICODE_ONLY */

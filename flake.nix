@@ -38,6 +38,7 @@
         renderer.packages.${system}.default.nativeBuildInputs;
       coreDeps = pkgs.rustPlatform.importCargoLock { lockFile = ./Cargo.lock; };
       unicodeSource = "${coreDeps}/utf8proc-sys-0.1.2/utf8proc";
+      wasm = import ./wasm { inherit pkgs renderer rust-overlay system unicodeSource; nativeCli = bundle canonical; };
       pf = { x86_64-linux = "linux-amd64"; aarch64-linux = "linux-arm64"; aarch64-darwin = "macos-arm64"; }.${system};
       about = "table 0.1.0 — Convert tabular data; PF=${pf}${pkgs.lib.optionalString pkgs.stdenv.hostPlatform.isLinux " VARIANT=gnu"}";
       rendererBin = "${renderer.packages.${system}.rust}/bin/tsv-to-ansi-table-rust";
@@ -278,6 +279,10 @@ EOF
       rust = rustPackage;
       profiling-tool = renderer.inputs.performance-profiling.packages.${system}.default;
       csv-oracle = csvOracle;
+      wasm-zig = wasm.zig;
+      wasm-rust = wasm.rust;
+      wasm-renderer = wasm.renderObject;
+      wasm-check = wasm.rust;
       default = bundle canonical;
     } // pkgs.lib.optionalAttrs (system == "x86_64-linux") {
       linux-arm64-cross = package pkgs.pkgsCross.aarch64-multiplatform-musl "${renderer.packages.${system}.linux-arm64}/bin/tsv-to-ansi-table-zig" false;
@@ -335,6 +340,6 @@ EOF
         meta = { license = pkgs.lib.licenses.mit; mainProgram = "table"; };
       };
     });
-    checks = forAll (system: { package = self.packages.${system}.default; });
+    checks = forAll (system: { package = self.packages.${system}.default; wasm = self.packages.${system}.wasm-check; });
   };
 }

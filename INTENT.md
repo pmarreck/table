@@ -27,3 +27,13 @@ Rust default. The three compiled implementations were confirmed by the owner on
 2026-11-05; LuaJIT was added on 2026-11-06. Run one shared acceptance suite and
 direct behavioral comparisons for all four. Benchmark each with the same CLI
 workloads and publish preliminary measurements with their limitations.
+
+Provide a professional, responsive Elm web interface on GitHub Pages. Conversion,
+format fingerprinting and rendering run entirely in client-side WebAssembly;
+the flake controls the build. Compare Rust and Zig WASM implementations before
+selecting the shipped engine. Expose all conversion formats and configuration
+through appropriate inputs, including dropdowns for finite choices. Keep raw
+output bytes separate from display text: IR displays printable-binary glyphs,
+while copy and download use the original bytes. Explain control-character
+limitations. Link the site to the source repository and the repository's online
+version field back to the site. This direction was requested on 2026-11-07.

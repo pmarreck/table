@@ -1,0 +1,16 @@
+[package]
+name = "table-web-rust"
+version = "0.1.0"
+edition = "2021"
+license = "MIT"
+
+[lib]
+crate-type = ["cdylib"]
+
+[dependencies]
+table = { path = "../.." }
+
+[profile.release]
+opt-level = 3
+lto = true
+panic = "abort"
