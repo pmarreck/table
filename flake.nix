@@ -39,6 +39,7 @@
       coreDeps = pkgs.rustPlatform.importCargoLock { lockFile = ./Cargo.lock; };
       unicodeSource = "${coreDeps}/utf8proc-sys-0.1.2/utf8proc";
       wasm = import ./wasm { inherit pkgs renderer rust-overlay system unicodeSource; nativeCli = bundle canonical; };
+      web = import ./web { inherit pkgs renderer wasm unicodeSource coreDeps; nativeCli = bundle canonical; };
       pf = { x86_64-linux = "linux-amd64"; aarch64-linux = "linux-arm64"; aarch64-darwin = "macos-arm64"; }.${system};
       about = "table 0.1.0 — Convert tabular data; PF=${pf}${pkgs.lib.optionalString pkgs.stdenv.hostPlatform.isLinux " VARIANT=gnu"}";
       rendererBin = "${renderer.packages.${system}.rust}/bin/tsv-to-ansi-table-rust";
@@ -169,7 +170,12 @@ EOF
         version = "0.1.0";
         src = pkgs.lib.fileset.toSource {
           root = ./.;
-          fileset = pkgs.lib.fileset.unions [ ./Cargo.toml ./Cargo.lock ./LICENSE ./src ./tests ./scripts ./build ./profiling.json ./zig ./roc ];
+          # Browser/WASM harnesses have their own required checks. Their edits
+          # must not recompile every native CLI and cross target.
+          fileset = pkgs.lib.fileset.unions [ ./Cargo.toml ./Cargo.lock ./LICENSE ./src
+            (pkgs.lib.fileset.difference ./tests (pkgs.lib.fileset.unions [ ./tests/web.mjs ./tests/wasm.mjs ]))
+            (pkgs.lib.fileset.difference ./scripts ./scripts/wasm-benchmark.mjs)
+            ./build ./profiling.json ./zig ./roc ];
         };
         cargoLock.lockFile = ./Cargo.lock;
         TEST_PUBLICATION_FIXTURE = "${publicationFixture}";
@@ -283,6 +289,10 @@ EOF
       wasm-rust = wasm.rust;
       wasm-renderer = wasm.renderObject;
       wasm-check = wasm.rust;
+      web = web.site;
+      web-check = web.check;
+      web-formatter = pkgs.elmPackages.elm-format;
+      wasm-benchmark = web.benchmark;
       default = bundle canonical;
     } // pkgs.lib.optionalAttrs (system == "x86_64-linux") {
       linux-arm64-cross = package pkgs.pkgsCross.aarch64-multiplatform-musl "${renderer.packages.${system}.linux-arm64}/bin/tsv-to-ansi-table-zig" false;
@@ -340,6 +350,10 @@ EOF
         meta = { license = pkgs.lib.licenses.mit; mainProgram = "table"; };
       };
     });
-    checks = forAll (system: { package = self.packages.${system}.default; wasm = self.packages.${system}.wasm-check; });
+    checks = forAll (system: {
+      package = self.packages.${system}.default;
+      wasm = self.packages.${system}.wasm-check;
+      web = self.packages.${system}.web-check;
+    });
   };
 }

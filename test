@@ -2,4 +2,4 @@
 set -euo pipefail
 cd "$(dirname "$0")"
 system=$(nix eval --impure --raw --expr builtins.currentSystem)
-exec nix build --no-link .#checks."$system".package .#checks."$system".wasm
+exec nix build --no-link .#checks."$system".package .#checks."$system".wasm .#checks."$system".web

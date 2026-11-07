@@ -7,6 +7,10 @@ Convert tables between CSV, TSV, Markdown, ASCII and ANSI terminal tables.
 cannot. A [versioned intermediate format](docs/intermediate-format.md) preserves
 cell contents and header presence between conversions.
 
+**[Open the online converter](https://pmarreck.github.io/table/)** for the same
+six formats in a responsive Elm interface. Conversion and fingerprinting run
+locally in WebAssembly; your table is never uploaded.
+
 ```sh
 printf 'name,count\nAlice,2\n' | table --to markdown
 # | name | count |
@@ -15,7 +19,7 @@ printf 'name,count\nAlice,2\n' | table --to markdown
 ```
 
 Rust, Zig, Roc and LuaJIT provide the same CLI. All four pass one shared
-acceptance suite and 496 direct output/status/error comparisons on Linux x86-64
+acceptance suite and 858 direct output/status/error comparisons on Linux x86-64
 and macOS ARM64. Rust remains the checked-in default while broader platform
 qualification is completed. Roc is intended to become the default after that
 qualification. See
@@ -107,8 +111,8 @@ preserved.
 
 Input is currently buffered in memory. CSV, TSV and IR can contain arbitrary
 cell contents, including terminal control sequences; do not display untrusted
-output directly in a terminal. Visual output will require a separate terminal
-sanitization policy.
+output directly in a terminal. Visual output applies the renderer's
+terminal-safety policy described below.
 
 ## Terminal tables
 
@@ -157,6 +161,54 @@ and fixed-width streaming against the compatibility executable. These checks
 are not a claim that visual tables recover clipped or padded source data.
 
 ## Tests and benchmarks
+
+### Online converter
+
+The [web app](https://pmarreck.github.io/table/) supports CSV, TSV, Markdown,
+ASCII, ANSI and IR in both directions, conservative format detection, header
+selection, per-column widths/alignment/clipping, color, decimal separators,
+plain layouts and custom input borders. Finite choices use dropdowns.
+Copy and Download retain the original output bytes. IR's preview substitutes
+the pinned printable-binary glyphs for control characters; copying uses raw IR,
+and downloading preserves exact bytes. The preview itself is not an IR encoding.
+
+`nix build .#web` builds all static assets using pinned Elm and WASM toolchains.
+`./test` includes 70 WASM conformance cases for **both Rust and Zig**, plus all
+36 browser conversion routes, fingerprinting, options, raw clipboard/download
+checks, stale-result protection, inert HTML, local-only requests and mobile
+layout. Browser tests replace the clipboard with a collecting adapter.
+GitHub Actions publishes the checked static artifact to Pages; Mechatron remains
+the project's CI. No server, analytics, external fonts or saved table history is
+involved.
+
+The web app uses the **Rust conversion core**, with the pinned renderer linked
+as a common pure Zig library. Both candidate modules run the same browser ABI.
+`./bm-web` compares them in Chromium using the shared performance engine, with
+one-core and 12-core affinity settings and native CLI output verification.
+
+Measured November 7, 2026 on a Threadripper 3990X with Chromium 149.0.7827.55,
+Rust 1.97.1 and Zig 0.16.0, seed `20261107`. Each entry below is the median
+milliseconds per conversion for **one-core / 12-core affinity**, using 4,096
+three-column data rows. Twelve warmups precede nine batched samples. Timing
+includes the WASM ABI, conversion and owned output copy; it excludes fixture
+generation, validation, compilation, browser startup and network loading.
+
+| Browser WASM workload | Rust | Zig |
+|---|---:|---:|
+| CSV → TSV | 1.14 / 1.13 | 1.13 / 1.21 |
+| CSV → IR | 1.17 / 1.20 | 1.52 / 1.45 |
+| Markdown → CSV | 1.96 / 1.91 | 3.51 / 4.16 |
+| ASCII → CSV | 4.01 / 4.14 | 5.65 / 5.81 |
+| Autodetect CSV | 3.78 / 3.60 | 4.44 / 4.18 |
+| CSV → ANSI | 25.03 / 24.60 | 27.47 / 32.37 |
+
+Rust was faster on most cases and its module is about 408 KiB versus Zig's
+1.4 MiB. These measurements support the web selection, rather than a general
+language ranking. All 24 cases are **UNBASELINED**; two Zig 12-core cases needed
+one retry for noise, and no baseline was accepted. The affinity settings do not
+make these converters multithreaded. [Raw samples and run IDs](docs/web-wasm-results.json)
+preserve the selected observations. Both builds use portable wasm32/WASI;
+SIMD-specific optimization is deferred until profiling establishes a bottleneck.
 
 `./test` is the complete current correctness suite, built through Nix. Every
 implementation runs the same 12 CLI integration tests, format-pair checks,

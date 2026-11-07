@@ -68,4 +68,4 @@ let
         "$out/table-rust.wasm" ${zig}/table-zig.wasm ${nativeCli}/bin/table-rust
     '';
   };
-in { inherit zig rust renderObject; }
+in { inherit zig rust renderObject toolchain; }

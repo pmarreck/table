@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
-import { execFileSync } from "node:child_process";
+import { execFileSync, spawnSync } from "node:child_process";
 import { createEngine, formats } from "../web/engine.mjs";
 const [rustFile, zigFile, cli] = process.argv.slice(2);
 assert(rustFile && zigFile && cli);
@@ -61,4 +61,15 @@ for (const options of [
     }
     count++;
 }
+for (const input of ["", "a,b\n", 'a,b\n"x\ty","z\nq"\n', 'a,b\n"\x00\x1b[31m\r\n","́界"\n']) for (const to of formats.slice(1)) {
+    const expected = spawnSync(cli, ["--from", "csv", "--to", to, ...(["ascii", "ansi"].includes(to) ? ["--terminal-width", "512", "--color", "never"] : [])], { input });
+    assert(!expected.error);
+    for (const engine of engines) {
+        const result = engine.convert(input, { from: "csv", to, width: 512 });
+        assert.equal(result.ok, expected.status === 0, `control/empty input -> ${to}: ${result.error}`);
+        if (result.ok) assert.deepEqual(result.bytes, new Uint8Array(expected.stdout));
+    }
+    count++;
+}
+for (const engine of engines) assert(engine.convert(data, { from: "csv", to: "csv", width: "", alignment: "unfinished", columns: [{ index: 9999 }] }).ok, "irrelevant hidden rendering settings must not block data conversion");
 console.log(`WASM conformance: ${count} format/layout cases, fingerprinting, malformed input and memory reuse passed for Rust and Zig`);

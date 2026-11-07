@@ -1,0 +1,19 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="Convert CSV, TSV, Markdown, ASCII, ANSI and IR tables in your browser. Private, fast and entirely on your device.">
+  <meta name="theme-color" content="#f5f7f4">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'wasm-unsafe-eval'; style-src 'self'; worker-src 'self'; connect-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none'">
+  <title>table · A universal table converter</title>
+  <link rel="icon" href="./favicon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="./style.css">
+  <script defer src="./elm.js"></script>
+  <script type="module" src="./bridge.mjs"></script>
+</head>
+<body>
+  <div id="app"></div>
+  <noscript>This table converter needs JavaScript and WebAssembly. All conversion happens on your device. The command-line version is available at github.com/pmarreck/table.</noscript>
+</body>
+</html>

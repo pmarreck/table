@@ -21,18 +21,19 @@ export function packRequest(input, options = {}, inspect = false) {
     if (!(data instanceof Uint8Array) || data.length > 8 * 1024 * 1024) throw new Error("Input must be no larger than 8 MiB.");
     const source = choice(formats, options.from ?? "auto", "input format");
     const destination = inspect ? 0 : choice(formats.slice(1), options.to ?? "csv", "output format") + 1;
+    const rendering = destination === 4 || destination === 5;
     const glyphs = encoder.encode(options.glyphs ?? "");
-    const columns = inspect ? [] : (options.columns ?? []);
+    const columns = rendering ? (options.columns ?? []) : [];
     if (columns.length > 10000 || glyphs.length > 4096) throw new Error("Too many column or border options.");
     const bytes = new Uint8Array(48 + columns.length * 16 + glyphs.length + data.length);
     const view = new DataView(bytes.buffer);
     const word = (i, value) => view.setUint32(i * 4, value, true);
     [0x31574254, inspect ? 0 : 1, source, destination,
         (options.header === false ? 0 : 1) | (options.allowLossy ? 2 : 0) | (options.plain ? 4 : 0) | (options.color === "always" ? 8 : 0),
-        inspect ? 80 : positive(options.width ?? 80, "Table width"),
-        inspect ? 0 : choice(decimals, options.decimal ?? ".", "decimal separator"),
-        inspect ? 0 : choice(alignments, options.alignment ?? "auto", "alignment"),
-        inspect ? 0 : choice(overflows, options.overflow ?? "auto", "clipping mode"),
+        rendering ? positive(options.width ?? 80, "Table width") : 80,
+        rendering ? choice(decimals, options.decimal ?? ".", "decimal separator") : 0,
+        rendering ? choice(alignments, options.alignment ?? "auto", "alignment") : 0,
+        rendering ? choice(overflows, options.overflow ?? "auto", "clipping mode") : 0,
         columns.length, glyphs.length, data.length].forEach((v, i) => word(i, v));
     columns.forEach((column, i) => {
         if (!Number.isInteger(column.index) || column.index < 0 || column.index > 9999) throw new Error("Invalid column selection.");
@@ -88,7 +89,9 @@ export async function createEngine(binary) {
             new Uint8Array(memory.buffer, pointer, packet.length).set(packet);
             const status = api.table_run();
             // Always copy before the next call can resize/free WASM-owned storage.
-            const bytes = new Uint8Array(memory.buffer, api.table_result_ptr(), api.table_result_len()).slice();
+            const length = api.table_result_len() >>> 0;
+            // Empty Zig slices may carry a non-address sentinel. Never dereference it.
+            const bytes = length ? new Uint8Array(memory.buffer, api.table_result_ptr() >>> 0, length).slice() : new Uint8Array();
             return { ok: status === 0, bytes, source: formats[api.table_source()] ?? "auto", rows: api.table_rows(), columns: api.table_columns(), error: status ? decoder.decode(bytes) : "" };
         },
         convert(input, options, inspect = false) { return this.raw(packRequest(input, options, inspect)); }

@@ -1,0 +1,684 @@
+{
+  "schema": "table-web-benchmark-summary/v1",
+  "date": "2026-11-07",
+  "seed": "20261107",
+  "hardware": "AMD Ryzen Threadripper 3990X; Linux x86-64",
+  "runtime": "149.0.7827.55",
+  "core_commit": "45a2cc4",
+  "phase": "warmed browser WASM ABI, parse/fingerprint/serialize/render and owned result copy; fixture generation, validation, compile, page and browser startup excluded",
+  "baseline_accepted": false,
+  "cases": [
+    {
+      "name": "rust-csv-tsv-1",
+      "id": "1093affabe2b65c73ce12a3991ed2308-rust-csv-tsv-1",
+      "verdict": "UNBASELINED",
+      "attempts": 1,
+      "cores": 1,
+      "binary_sha256": "80d0c001c8c7456ae0f1a0f4276df235611b6378a151711116f97f2545d594d7",
+      "iterations": 20,
+      "warmup": 12,
+      "rows": [
+        {
+          "samples": {
+            "wall_ns": [
+              1159999.999404,
+              1134999.999404,
+              1140000.000596,
+              1275000,
+              1140000.000596,
+              1130000.0011921,
+              1130000.0011921,
+              1134999.999404,
+              1110000.0023842
+            ]
+          },
+          "size": 4096
+        }
+      ]
+    },
+    {
+      "name": "rust-csv-tsv-12",
+      "id": "4215e75572fef6c485dd05ef69926452-rust-csv-tsv-12",
+      "verdict": "UNBASELINED",
+      "attempts": 1,
+      "cores": 12,
+      "binary_sha256": "80d0c001c8c7456ae0f1a0f4276df235611b6378a151711116f97f2545d594d7",
+      "iterations": 20,
+      "warmup": 12,
+      "rows": [
+        {
+          "samples": {
+            "wall_ns": [
+              1129999.9982119,
+              1129999.9982119,
+              1119999.9988079,
+              1129999.9982119,
+              1129999.9982119,
+              1125000,
+              1134999.999404,
+              1119999.9988079,
+              1114999.9976158
+            ]
+          },
+          "size": 4096
+        }
+      ]
+    },
+    {
+      "name": "rust-csv-ir-1",
+      "id": "805ef61a6f184b9dc10267b0c3628f9b-rust-csv-ir-1",
+      "verdict": "UNBASELINED",
+      "attempts": 1,
+      "cores": 1,
+      "binary_sha256": "80d0c001c8c7456ae0f1a0f4276df235611b6378a151711116f97f2545d594d7",
+      "iterations": 20,
+      "warmup": 12,
+      "rows": [
+        {
+          "samples": {
+            "wall_ns": [
+              1235000.0023842,
+              1159999.999404,
+              1165000.000596,
+              1150000,
+              1170000.0017881,
+              1154999.9982119,
+              1144999.9988079,
+              1170000.0017881,
+              1165000.000596
+            ]
+          },
+          "size": 4096
+        }
+      ]
+    },
+    {
+      "name": "rust-csv-ir-12",
+      "id": "ff399b8e728cdca6d6c7f71af9c1e3cb-rust-csv-ir-12",
+      "verdict": "UNBASELINED",
+      "attempts": 1,
+      "cores": 12,
+      "binary_sha256": "80d0c001c8c7456ae0f1a0f4276df235611b6378a151711116f97f2545d594d7",
+      "iterations": 20,
+      "warmup": 12,
+      "rows": [
+        {
+          "samples": {
+            "wall_ns": [
+              1209999.999404,
+              1205000.0011921,
+              1179999.9982119,
+              1204999.9982119,
+              1190000.000596,
+              1195000.0017881,
+              1209999.999404,
+              1185000.0023842,
+              1194999.9988079
+            ]
+          },
+          "size": 4096
+        }
+      ]
+    },
+    {
+      "name": "rust-markdown-csv-1",
+      "id": "09940851c8ed61db8bbe7d4f0497b94b-rust-markdown-csv-1",
+      "verdict": "UNBASELINED",
+      "attempts": 1,
+      "cores": 1,
+      "binary_sha256": "80d0c001c8c7456ae0f1a0f4276df235611b6378a151711116f97f2545d594d7",
+      "iterations": 20,
+      "warmup": 12,
+      "rows": [
+        {
+          "samples": {
+            "wall_ns": [
+              1934999.999404,
+              1930000.0011921,
+              1920000.0017881,
+              1970000.0017881,
+              2709999.999404,
+              1950000,
+              1959999.999404,
+              1965000.000596,
+              1954999.9982119
+            ]
+          },
+          "size": 4096
+        }
+      ]
+    },
+    {
+      "name": "rust-markdown-csv-12",
+      "id": "b04c7ebf9a16e87337a5a457bd2c53eb-rust-markdown-csv-12",
+      "verdict": "UNBASELINED",
+      "attempts": 1,
+      "cores": 12,
+      "binary_sha256": "80d0c001c8c7456ae0f1a0f4276df235611b6378a151711116f97f2545d594d7",
+      "iterations": 20,
+      "warmup": 12,
+      "rows": [
+        {
+          "samples": {
+            "wall_ns": [
+              1894999.9988079,
+              1904999.9982119,
+              1904999.9982119,
+              1904999.9982119,
+              1854999.9982119,
+              1850000,
+              2175000,
+              2320000.0017881,
+              1865000.000596
+            ]
+          },
+          "size": 4096
+        }
+      ]
+    },
+    {
+      "name": "rust-ascii-csv-1",
+      "id": "2629ea49479ecbb458dce0939ce25b8d-rust-ascii-csv-1",
+      "verdict": "UNBASELINED",
+      "attempts": 1,
+      "cores": 1,
+      "binary_sha256": "80d0c001c8c7456ae0f1a0f4276df235611b6378a151711116f97f2545d594d7",
+      "iterations": 20,
+      "warmup": 12,
+      "rows": [
+        {
+          "samples": {
+            "wall_ns": [
+              4009999.999404,
+              4000000,
+              3990000.000596,
+              3984999.999404,
+              4045000.0017881,
+              4040000.000596,
+              4069999.9988079,
+              4040000.000596,
+              3990000.000596
+            ]
+          },
+          "size": 4096
+        }
+      ]
+    },
+    {
+      "name": "rust-ascii-csv-12",
+      "id": "9e6a713200df62947d236292f5763584-rust-ascii-csv-12",
+      "verdict": "UNBASELINED",
+      "attempts": 1,
+      "cores": 12,
+      "binary_sha256": "80d0c001c8c7456ae0f1a0f4276df235611b6378a151711116f97f2545d594d7",
+      "iterations": 20,
+      "warmup": 12,
+      "rows": [
+        {
+          "samples": {
+            "wall_ns": [
+              4065000.000596,
+              4215000.000596,
+              4209999.999404,
+              4190000.000596,
+              4140000.000596,
+              4190000.000596,
+              4040000.000596,
+              3984999.999404,
+              3990000.000596
+            ]
+          },
+          "size": 4096
+        }
+      ]
+    },
+    {
+      "name": "rust-autodetect-csv-1",
+      "id": "a4272bd9c01cdd22e0d37b8c61cfa630-rust-autodetect-csv-1",
+      "verdict": "UNBASELINED",
+      "attempts": 1,
+      "cores": 1,
+      "binary_sha256": "80d0c001c8c7456ae0f1a0f4276df235611b6378a151711116f97f2545d594d7",
+      "iterations": 5,
+      "warmup": 12,
+      "rows": [
+        {
+          "samples": {
+            "wall_ns": [
+              3880000.0071526,
+              4339999.9976158,
+              4500000,
+              4160000.0023842,
+              3760000.0023842,
+              3739999.9976158,
+              3779999.9952316,
+              3659999.9904633,
+              3639999.9976158
+            ]
+          },
+          "size": 4096
+        }
+      ]
+    },
+    {
+      "name": "rust-autodetect-csv-12",
+      "id": "14871104e1732941b230a3e528b71109-rust-autodetect-csv-12",
+      "verdict": "UNBASELINED",
+      "attempts": 1,
+      "cores": 12,
+      "binary_sha256": "80d0c001c8c7456ae0f1a0f4276df235611b6378a151711116f97f2545d594d7",
+      "iterations": 5,
+      "warmup": 12,
+      "rows": [
+        {
+          "samples": {
+            "wall_ns": [
+              3600000,
+              3560000.0023842,
+              3600000,
+              3639999.9976158,
+              3720000.0047684,
+              3660000.0023842,
+              3700000,
+              3579999.9952316,
+              3580000.0071526
+            ]
+          },
+          "size": 4096
+        }
+      ]
+    },
+    {
+      "name": "rust-csv-ansi-1",
+      "id": "1aa3d1ce211b55d66a26ab2e45375af3-rust-csv-ansi-1",
+      "verdict": "UNBASELINED",
+      "attempts": 1,
+      "cores": 1,
+      "binary_sha256": "80d0c001c8c7456ae0f1a0f4276df235611b6378a151711116f97f2545d594d7",
+      "iterations": 3,
+      "warmup": 12,
+      "rows": [
+        {
+          "samples": {
+            "wall_ns": [
+              25033333.341281,
+              26100000.003974,
+              27133333.325386,
+              27799999.992053,
+              26666666.666667,
+              24699999.988079,
+              24133333.345254,
+              24766666.67064,
+              24833333.333333
+            ]
+          },
+          "size": 4096
+        }
+      ]
+    },
+    {
+      "name": "rust-csv-ansi-12",
+      "id": "d6b44ab2a023c2475947304f61a523b8-rust-csv-ansi-12",
+      "verdict": "UNBASELINED",
+      "attempts": 1,
+      "cores": 12,
+      "binary_sha256": "80d0c001c8c7456ae0f1a0f4276df235611b6378a151711116f97f2545d594d7",
+      "iterations": 3,
+      "warmup": 12,
+      "rows": [
+        {
+          "samples": {
+            "wall_ns": [
+              24233333.32936,
+              24366666.654746,
+              24600000.003974,
+              25000000,
+              26899999.996026,
+              26000000,
+              24666666.666667,
+              24433333.337307,
+              24533333.321412
+            ]
+          },
+          "size": 4096
+        }
+      ]
+    },
+    {
+      "name": "zig-csv-tsv-1",
+      "id": "c856f56bc7488dcdff41ba39e1cd1663-zig-csv-tsv-1",
+      "verdict": "UNBASELINED",
+      "attempts": 1,
+      "cores": 1,
+      "binary_sha256": "20dcb1bf53a602855f8c313f5daca9f44d0f6f13573ae62e682f97717745a7c7",
+      "iterations": 20,
+      "warmup": 12,
+      "rows": [
+        {
+          "samples": {
+            "wall_ns": [
+              1125000,
+              1134999.999404,
+              1109999.999404,
+              1120000.0017881,
+              1114999.9976158,
+              1119999.9988079,
+              1129999.9982119,
+              1139999.9976158,
+              1125000
+            ]
+          },
+          "size": 4096
+        }
+      ]
+    },
+    {
+      "name": "zig-csv-tsv-12",
+      "id": "7ca7ae08018f78fa28217fb8020fd534-zig-csv-tsv-12",
+      "verdict": "UNBASELINED",
+      "attempts": 1,
+      "cores": 12,
+      "binary_sha256": "20dcb1bf53a602855f8c313f5daca9f44d0f6f13573ae62e682f97717745a7c7",
+      "iterations": 20,
+      "warmup": 12,
+      "rows": [
+        {
+          "samples": {
+            "wall_ns": [
+              1415000.000596,
+              1394999.9988079,
+              1310000.0023842,
+              1209999.999404,
+              1185000.0023842,
+              1184999.999404,
+              1204999.9982119,
+              1190000.000596,
+              1179999.9982119
+            ]
+          },
+          "size": 4096
+        }
+      ]
+    },
+    {
+      "name": "zig-csv-ir-1",
+      "id": "1a3cedd4bb88e9d1c783bb93ce9e5ab4-zig-csv-ir-1",
+      "verdict": "UNBASELINED",
+      "attempts": 1,
+      "cores": 1,
+      "binary_sha256": "20dcb1bf53a602855f8c313f5daca9f44d0f6f13573ae62e682f97717745a7c7",
+      "iterations": 20,
+      "warmup": 12,
+      "rows": [
+        {
+          "samples": {
+            "wall_ns": [
+              1575000,
+              1625000,
+              1569999.9988079,
+              1500000,
+              1515000.000596,
+              1525000,
+              1484999.999404,
+              1469999.9988079,
+              1500000
+            ]
+          },
+          "size": 4096
+        }
+      ]
+    },
+    {
+      "name": "zig-csv-ir-12",
+      "id": "d77d520591691a8e7d713b1ae5160418-zig-csv-ir-12",
+      "verdict": "UNBASELINED",
+      "attempts": 2,
+      "cores": 12,
+      "binary_sha256": "20dcb1bf53a602855f8c313f5daca9f44d0f6f13573ae62e682f97717745a7c7",
+      "iterations": 20,
+      "warmup": 12,
+      "rows": [
+        {
+          "samples": {
+            "wall_ns": [
+              1444999.9988079,
+              1454999.9982119,
+              1444999.9988079,
+              1450000,
+              1459999.999404,
+              1440000.000596,
+              1434999.999404,
+              1455000.0011921,
+              1729999.9982119
+            ]
+          },
+          "size": 4096
+        }
+      ]
+    },
+    {
+      "name": "zig-markdown-csv-1",
+      "id": "33b97f63ca1024087e7b47454664c9b2-zig-markdown-csv-1",
+      "verdict": "UNBASELINED",
+      "attempts": 1,
+      "cores": 1,
+      "binary_sha256": "20dcb1bf53a602855f8c313f5daca9f44d0f6f13573ae62e682f97717745a7c7",
+      "iterations": 20,
+      "warmup": 12,
+      "rows": [
+        {
+          "samples": {
+            "wall_ns": [
+              3534999.999404,
+              3515000.000596,
+              3484999.999404,
+              3494999.9988079,
+              3500000,
+              3725000,
+              3500000,
+              3505000.0011921,
+              3509999.999404
+            ]
+          },
+          "size": 4096
+        }
+      ]
+    },
+    {
+      "name": "zig-markdown-csv-12",
+      "id": "5edff260fa2bd06f9567249c1a6a37a0-zig-markdown-csv-12",
+      "verdict": "UNBASELINED",
+      "attempts": 1,
+      "cores": 12,
+      "binary_sha256": "20dcb1bf53a602855f8c313f5daca9f44d0f6f13573ae62e682f97717745a7c7",
+      "iterations": 20,
+      "warmup": 12,
+      "rows": [
+        {
+          "samples": {
+            "wall_ns": [
+              4270000.0017881,
+              3665000.000596,
+              4155000.0011921,
+              4305000.0011921,
+              3570000.0017881,
+              3915000.000596,
+              4094999.9988079,
+              4500000,
+              4590000.000596
+            ]
+          },
+          "size": 4096
+        }
+      ]
+    },
+    {
+      "name": "zig-ascii-csv-1",
+      "id": "3f8f2ef270eaf1a28167e1737962b959-zig-ascii-csv-1",
+      "verdict": "UNBASELINED",
+      "attempts": 1,
+      "cores": 1,
+      "binary_sha256": "20dcb1bf53a602855f8c313f5daca9f44d0f6f13573ae62e682f97717745a7c7",
+      "iterations": 20,
+      "warmup": 12,
+      "rows": [
+        {
+          "samples": {
+            "wall_ns": [
+              5659999.999404,
+              5840000.000596,
+              5719999.9988079,
+              5650000,
+              5975000,
+              5625000,
+              5645000.0017881,
+              5625000,
+              5600000
+            ]
+          },
+          "size": 4096
+        }
+      ]
+    },
+    {
+      "name": "zig-ascii-csv-12",
+      "id": "04e64dfc09f66e0bc180d887d77e8a54-zig-ascii-csv-12",
+      "verdict": "UNBASELINED",
+      "attempts": 1,
+      "cores": 12,
+      "binary_sha256": "20dcb1bf53a602855f8c313f5daca9f44d0f6f13573ae62e682f97717745a7c7",
+      "iterations": 20,
+      "warmup": 12,
+      "rows": [
+        {
+          "samples": {
+            "wall_ns": [
+              6000000,
+              6535000.0023842,
+              5805000.0011921,
+              5670000.0017881,
+              5975000,
+              6919999.9988079,
+              5714999.9976158,
+              5695000.0017881,
+              5675000
+            ]
+          },
+          "size": 4096
+        }
+      ]
+    },
+    {
+      "name": "zig-autodetect-csv-1",
+      "id": "d860eba15fbacf0fa7c41f441fa22295-zig-autodetect-csv-1",
+      "verdict": "UNBASELINED",
+      "attempts": 1,
+      "cores": 1,
+      "binary_sha256": "20dcb1bf53a602855f8c313f5daca9f44d0f6f13573ae62e682f97717745a7c7",
+      "iterations": 5,
+      "warmup": 12,
+      "rows": [
+        {
+          "samples": {
+            "wall_ns": [
+              5180000.0071526,
+              4319999.9928474,
+              4439999.9976158,
+              4419999.9928474,
+              4400000,
+              5700000,
+              5219999.9928474,
+              5139999.9976158,
+              4300000
+            ]
+          },
+          "size": 4096
+        }
+      ]
+    },
+    {
+      "name": "zig-autodetect-csv-12",
+      "id": "8a473f1afe9037ba8231c85928c3d9ff-zig-autodetect-csv-12",
+      "verdict": "UNBASELINED",
+      "attempts": 2,
+      "cores": 12,
+      "binary_sha256": "20dcb1bf53a602855f8c313f5daca9f44d0f6f13573ae62e682f97717745a7c7",
+      "iterations": 5,
+      "warmup": 12,
+      "rows": [
+        {
+          "samples": {
+            "wall_ns": [
+              4179999.9952316,
+              4060000.0023842,
+              4179999.9952316,
+              3960000.0023842,
+              3959999.9904633,
+              4660000.0023842,
+              4260000.0023842,
+              4260000.0023842,
+              5700000
+            ]
+          },
+          "size": 4096
+        }
+      ]
+    },
+    {
+      "name": "zig-csv-ansi-1",
+      "id": "19355a84c97f715e51eba06f1808b45e-zig-csv-ansi-1",
+      "verdict": "UNBASELINED",
+      "attempts": 1,
+      "cores": 1,
+      "binary_sha256": "20dcb1bf53a602855f8c313f5daca9f44d0f6f13573ae62e682f97717745a7c7",
+      "iterations": 3,
+      "warmup": 12,
+      "rows": [
+        {
+          "samples": {
+            "wall_ns": [
+              27566666.662693,
+              26466666.658719,
+              27466666.658719,
+              25466666.678588,
+              26166666.666667,
+              27233333.349228,
+              30966666.678588,
+              30266666.67064,
+              33800000.011921
+            ]
+          },
+          "size": 4096
+        }
+      ]
+    },
+    {
+      "name": "zig-csv-ansi-12",
+      "id": "11a524b90bdd716098f77f72eff7244f-zig-csv-ansi-12",
+      "verdict": "UNBASELINED",
+      "attempts": 1,
+      "cores": 12,
+      "binary_sha256": "20dcb1bf53a602855f8c313f5daca9f44d0f6f13573ae62e682f97717745a7c7",
+      "iterations": 3,
+      "warmup": 12,
+      "rows": [
+        {
+          "samples": {
+            "wall_ns": [
+              36433333.337307,
+              40500000,
+              38899999.996026,
+              32366666.654746,
+              32599999.984105,
+              31333333.333333,
+              28166666.666667,
+              29200000.007947,
+              30333333.333333
+            ]
+          },
+          "size": 4096
+        }
+      ]
+    }
+  ]
+}
