@@ -11,4 +11,5 @@
 - [ ] Qualify Linux ARM64 and Windows for Zig, Roc and LuaJIT, including the missing Roc Windows host/CRT support (context: docs/implementation-parity.md).
 - [ ] Make Roc the default implementation after compatibility and platform qualification, preserving explicit implementation selection.
 - [ ] Qualify native Linux ARM64 and Windows x86-64/ARM64 runtime behavior, including the ARM64 UCRT mapping.
+- [ ] Owner scheduling required: qualify a scoped Rust 1.100.0 compiler-provider update across native, oracle, cross and WASM routes, including Cargo JSON artifact discovery; preserve existing pins until scheduled (context: docs/plan_context/rust-1.100-assessment.md).
 - [ ] Complete independently reviewed growth, cold-start and memory gates and integrate required checks into ./test (context: docs/performance.md).
