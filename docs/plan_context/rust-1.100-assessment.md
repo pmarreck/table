@@ -150,3 +150,7 @@ The bounded allocation-growth/cleanup controls are independently reviewed and
 required by `./test`. Fresh historical performance approval remains separate;
 older published measurements still describe their original toolchains. Roc's
 default promotion and the wider native platform qualifications remain open.
+
+Commit `37f76184ba56f3d881ecf9078d2df2662777303c` was pushed and independently
+verified against `origin/yolo`. Mechatron completed all seven exact-commit
+targets successfully in 28 seconds on November 20, 2026.
