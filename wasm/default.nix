@@ -1,4 +1,4 @@
-{ pkgs, renderer, rust-overlay, system, unicodeSource, nativeCli }:
+{ pkgs, renderer, toolchainFor, unicodeSource, nativeCli, buildInfo }:
 let
   source = pkgs.lib.fileset.toSource {
     root = ../.;
@@ -29,11 +29,11 @@ let
         -target wasm32-wasi -O ReleaseFast -lc -fno-entry -rdynamic \
         -DTABLE_UNICODE_ONLY -DUTF8PROC_STATIC -I${unicodeSource} \
         --max-memory=268435456 -femit-bin="$out/table-zig.wasm"
+      cp ${buildInfo} "$out/BUILD-INFO.json"
     '';
     dontInstall = true;
   };
-  rust-bin = rust-overlay.lib.mkRustBin {} pkgs;
-  toolchain = rust-bin.stable."1.97.1".minimal.override { targets = [ "wasm32-wasip1" ]; };
+  toolchain = toolchainFor [ "wasm32-wasip1" ];
   rustPlatform = pkgs.makeRustPlatform { rustc = toolchain; cargo = toolchain; };
   cc = pkgs.writeShellScript "table-wasm-cc" ''
     args=()
@@ -51,15 +51,20 @@ let
     src = source;
     cargoRoot = "wasm/rust";
     cargoLock.lockFile = ./rust/Cargo.lock;
-    nativeBuildInputs = [ pkgs.zig_0_16 pkgs.nodejs ];
+    nativeBuildInputs = [ pkgs.zig_0_16 pkgs.nodejs pkgs.jq ];
     CC_wasm32_wasip1 = cc;
     AR_wasm32_wasip1 = ar;
     buildPhase = setup + ''
-      cargo rustc --manifest-path wasm/rust/Cargo.toml --frozen --offline --release --target wasm32-wasip1 -- \
-        -C link-arg=${renderObject}/lib/table-renderer.o -C link-arg=--max-memory=268435456
+      cargo rustc --manifest-path wasm/rust/Cargo.toml --frozen --offline --release --target wasm32-wasip1 --message-format=json-render-diagnostics -- \
+        -C link-arg=${renderObject}/lib/table-renderer.o -C link-arg=--max-memory=268435456 > cargo-artifacts.json
     '';
     doCheck = false; # Executed against the same independent oracle by checks.wasm.
-    installPhase = ''mkdir -p "$out"; cp wasm/rust/target/wasm32-wasip1/release/table_web_rust.wasm "$out/table-rust.wasm"'';
+    installPhase = ''
+      artifact=$(jq -ser '[.[] | select(.reason == "compiler-artifact" and .target.name == "table_web_rust") | .filenames[] | select(endswith(".wasm"))] | unique | if length == 1 then .[0] else error("expected exactly one Rust WASM artifact") end' cargo-artifacts.json)
+      mkdir -p "$out"
+      cp "$artifact" "$out/table-rust.wasm"
+      cp ${buildInfo} "$out/BUILD-INFO.json"
+    '';
     doInstallCheck = true;
     installCheckPhase = ''
       export HOME="$TMPDIR/wasm-home"

@@ -2,7 +2,7 @@
   "schema": "performance-project/v1",
   "project": "table-web",
   "history_url": "file:///var/lib/performance-profiling",
-  "identity": {"runtime": "Chromium pinned by Nixpkgs / Playwright-1.61.1; Rust-1.97.1; Zig-0.16.0", "build_mode": "release", "concurrency": 1},
+  "identity": {"runtime": "Chromium pinned by Nixpkgs / Playwright-1.61.1; Rust-1.100.0; Zig-0.16.0", "build_mode": "release", "concurrency": 1},
   "cases": [
     {"name":"rust-csv-tsv-1","definition":"rust-csv-tsv-wasm-chromium-v1","mode":"bm","metric":"wall_ns","comparison":"absolute","cores":1,"command":["table-wasm-benchmark","{case}","{sizes}","{seed}"],"sizes":[4096],"bounds":[1,10000000000],"timeout_ms":60000},
     {"name":"rust-csv-tsv-12","definition":"rust-csv-tsv-wasm-chromium-v1","mode":"bm","metric":"wall_ns","comparison":"absolute","cores":12,"command":["table-wasm-benchmark","{case}","{sizes}","{seed}"],"sizes":[4096],"bounds":[1,10000000000],"timeout_ms":60000},

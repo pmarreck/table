@@ -31,7 +31,7 @@ fn run() -> Result<(), String> {
             "--plain" if inline.is_none() => visual_options.push(key.to_owned()),
             "--header" if inline.is_none() => { header = true; header_explicit = true; }
             "--no-header" if inline.is_none() => { header = false; header_explicit = true; }
-            "--about" if inline.is_none() => { println!("table {} — Convert tabular data; PF={}{}", env!("CARGO_PKG_VERSION"), platform(), variant()); return Ok(()); }
+            "--about" if inline.is_none() => { println!("table {} — Convert tabular data; PF={}{} {}", env!("CARGO_PKG_VERSION"), platform(), variant(), env!("TABLE_BUILD_LABEL")); return Ok(()); }
             "-h" | "--help" if inline.is_none() => { println!("Usage: table [--from auto|csv|tsv|markdown|ir|ascii|ansi] --to csv|tsv|markdown|ir|ascii|ansi [--header|--no-header]\nInput format is detected when --from is omitted. Ambiguous input requires --from.\nAutodetection buffers stdin; explicit --from tsv retains fixed-width visual streaming.\nVisual output: --widths, --align, --overflow, --terminal-width, --color, --plain, --decimal-separator."); return Ok(()); }
             _ => return Err(format!("unknown option: {arg}")),
         }

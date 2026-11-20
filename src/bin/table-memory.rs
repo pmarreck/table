@@ -70,8 +70,12 @@ fn accounting_canary() {
 fn main() {
     let args: Vec<_> = std::env::args().collect();
     if args.len() == 2 && args[1] == "--self-test" { accounting_canary(); return; }
+    if args.len() == 2 && args[1] == "--list" {
+        println!("csv-ir-memory\ncsv-ir-allocation-count");
+        return;
+    }
     assert_eq!(args.len(), 4, "expected case, sizes and seed");
-    assert_eq!(args[1], "csv-ir-memory");
+    assert!(matches!(args[1].as_str(), "csv-ir-memory" | "csv-ir-allocation-count"), "unknown memory case");
     let sizes: Vec<usize> = args[2].split(',').map(|s| s.parse().expect("invalid size")).collect();
     assert!(!sizes.is_empty() && sizes.iter().all(|&n| n > 0 && n <= 1_000_000));
     let mut rows = Vec::new();
@@ -89,7 +93,7 @@ fn main() {
             cycle(&input, n);
             ENABLED.store(false, Ordering::SeqCst);
             let residual = LIVE.load(Ordering::SeqCst);
-            assert!(residual >= 0, "allocator accounting underflow");
+            assert_eq!(residual, 0, "CSV/IR cycle retained Rust allocations");
             peaks.push(PEAK.load(Ordering::SeqCst));
             allocations.push(COUNT.load(Ordering::SeqCst));
             residuals.push(residual);

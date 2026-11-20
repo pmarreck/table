@@ -80,6 +80,7 @@ type alias Model =
     , overrides : Dict Int Column
     , page : Int
     , legend : String
+    , buildRevision : String
     }
 
 
@@ -106,10 +107,10 @@ sample =
     "Name,Team,Score\nAlex,Design,98\nSam,Engineering,100\nYuki,Research,95\n"
 
 
-main : Program () Model Msg
+main : Program String Model Msg
 main =
     Browser.element
-        { init = \_ -> ( initial, Cmd.none )
+        { init = \revision -> ( { initial | buildRevision = revision }, Cmd.none )
         , update = update
         , subscriptions = \_ -> fromEngine Received
         , view = view
@@ -144,6 +145,7 @@ initial =
     , overrides = Dict.empty
     , page = 0
     , legend = ""
+    , buildRevision = "provenance-unavailable"
     }
 
 
@@ -645,7 +647,7 @@ view model =
                 ]
             ]
         , H.footer [ A.class "site-footer" ]
-            [ H.span [] [ H.text "Built with Elm + WebAssembly. Processed locally." ]
+            [ H.span [] [ H.text ("Built with Elm + WebAssembly. Processed locally. " ++ model.buildRevision) ]
             , H.div [] [ H.a [ A.href "https://github.com/pmarreck/table" ] [ H.text "Source code" ], H.a [ A.href "./LICENSES.txt" ] [ H.text "Licenses" ] ]
             ]
         ]

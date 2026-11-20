@@ -1,4 +1,4 @@
-{ pkgs, renderer, wasm, unicodeSource, coreDeps, nativeCli }:
+{ pkgs, renderer, wasm, unicodeSource, coreDeps, nativeCli, buildInfo, buildLabel }:
 let
   printableBinary = renderer.inputs.performance-profiling.inputs.printable-binary;
   elmDeps = import ./elm-deps.nix;
@@ -33,6 +33,8 @@ let
     '';
     installPhase = ''
       cp index.html style.css favicon.svg engine.mjs worker.mjs bridge.mjs presentation.mjs "$out/"
+      substituteInPlace "$out/bridge.mjs" --replace-fail '@TABLE_BUILD_REVISION@' '${buildLabel}'
+      cp ${buildInfo} "$out/BUILD-INFO.json"
       cp ${wasm.${implementation}}/table-${implementation}.wasm "$out/table.wasm"
       cp ${printableBinary}/js/printable_binary.js "$out/printable-binary.mjs"
       cp ${printableBinary}/character_map.txt "$out/"

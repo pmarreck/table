@@ -1,8 +1,13 @@
 # Rust 1.100 assessment
 
+The owner authorized implementation on 2026-11-20. The assessment below records
+the pre-upgrade state. Qualification results are recorded separately; its earlier
+scheduling hold no longer applies.
+
 Assessed November 13, 2026 against `dad577d`. This records a proposed maintenance
 upgrade, not authorization to change compiler pins. No 1.100 build or runtime
-qualification was performed. The shipped CLI and online converter stay unchanged.
+qualification was performed at that time. The following sections preserve that
+assessment; implementation evidence follows at the end.
 
 ## Selected toolchains
 
@@ -96,3 +101,52 @@ baselines. This assessment does not start that work or a fleet rebuild.
 Overall: a reasonable maintenance candidate, with provider availability and
 Cargo artifact discovery as concrete preparation work. Source inspection alone
 does not qualify Rust 1.100.0 for shipping.
+
+## Qualification on November 20, 2026
+
+The compiler provider is now rust-overlay revision
+`8bbfc858c7b85f5e6ed6d6cc201ffcee1bb08a9b`, selecting Rust/Cargo 1.100.0
+through one toolchain function for all local native, oracle, cross and WASM
+routes. Nixpkgs, the predecessor renderer, Zig, Roc, LuaJIT, editions and Cargo
+lockfiles retain their earlier pins. The predecessor retains its own compiler.
+The `libc` dependency is now explicitly Unix-only, matching its actual uses and
+resolving Cargo's new Windows unused-dependency diagnostic.
+
+Native Linux amd64 and macOS ARM64 pass the same twelve CLI tests per
+implementation, independent CSV/GFM oracles and all 858 parity cases. Both
+WASM modules pass 70 conformance cases, including memory reuse and malformed
+input; the Elm browser checks pass all 36 conversion routes and the mobile,
+clipboard, raw IR and local-only computation checks. `./test` passes, as do all
+seven existing Mechatron target attributes. These are local/remote Nix build
+results, separate from the subsequent exact-commit CI result.
+
+Cargo JSON artifact messages now locate the shared CLI acceptance harness,
+Rust WASM module and Windows ARM64 executables. Diagnostics remain visible via
+`json-render-diagnostics`. The existing Nix final-install hooks also pass with
+Cargo's new intermediate layout.
+
+The downloaded compiler exposed the static stdenv's unqualified `-static`
+C-link flag leaking into GNU-host build scripts. The build removes that flag
+for static-target Cargo invocations, supplies the host ELF interpreter, and
+retains explicit target `+crt-static`. The installed Linux Rust executable is
+checked as static or static PIE.
+
+Windows ARM64 additionally requires the synchronization API import contract and
+a static LLVM unwinder. Both come from the already pinned Zig 0.16.0 sources:
+the import definition supplies the synchronization library, and an explicit
+archive includes the SEH unwinder, register support and both level-one C
+interfaces. No placeholder unwind or security handlers are used. The existing
+UCRT mapping remains. The cross-build passes; native Windows ARM64 execution is
+still required and is not established by these link checks.
+
+Build wrappers now supply Git-aware revision metadata, with complete-history
+first-parent base selection, full-ancestry counting and a separate dirty flag.
+Native About output, the web footer and provenance JSON use the same identity.
+Missing or shallow Git history explicitly reports unavailable provenance.
+Independent review found an inherited-Git-index isolation error in the fixture;
+the corrected test proves that an external disposable index stays untouched.
+
+The bounded allocation-growth/cleanup controls are independently reviewed and
+required by `./test`. Fresh historical performance approval remains separate;
+older published measurements still describe their original toolchains. Roc's
+default promotion and the wider native platform qualifications remain open.

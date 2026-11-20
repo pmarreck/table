@@ -1,0 +1,25 @@
+#!/usr/bin/env bash
+set -euo pipefail
+repo=${1:-.}
+# The argument identifies the repository, even inside another Git operation.
+unset GIT_DIR GIT_WORK_TREE GIT_COMMON_DIR GIT_INDEX_FILE GIT_OBJECT_DIRECTORY
+unset GIT_ALTERNATE_OBJECT_DIRECTORIES GIT_NAMESPACE GIT_SHALLOW_FILE
+unset GIT_CONFIG GIT_CONFIG_COUNT GIT_CONFIG_PARAMETERS
+unavailable() { printf '{"available":false}\n'; exit 0; }
+git -C "$repo" rev-parse --git-dir >/dev/null 2>&1 || unavailable
+[[ $(git -C "$repo" rev-parse --is-shallow-repository) == false ]] || unavailable
+commit=$(git -C "$repo" rev-parse HEAD)
+primary=''
+for ref in refs/heads/yolo refs/remotes/origin/yolo; do
+    if git -C "$repo" show-ref --verify --quiet "$ref"; then primary=$ref; break; fi
+done
+[[ -n $primary ]] || unavailable
+base=''
+while IFS= read -r candidate; do
+    if git -C "$repo" merge-base --is-ancestor "$candidate" "$commit"; then base=$candidate; break; fi
+done < <(git -C "$repo" rev-list --first-parent "$primary")
+[[ -n $base ]] || unavailable
+count=$(git -C "$repo" rev-list --count "$base")
+dirty=false
+[[ -z $(git -C "$repo" status --porcelain --untracked-files=normal) ]] || dirty=true
+printf '{"available":true,"commit":"%s","primary_base":"%s","count":%s,"dirty":%s}\n' "$commit" "$base" "$count" "$dirty"

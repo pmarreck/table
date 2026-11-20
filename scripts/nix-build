@@ -1,0 +1,9 @@
+#!/usr/bin/env bash
+set -euo pipefail
+here=$(cd "$(dirname "$0")" && pwd)
+metadata=$(mktemp -d "${TMPDIR:-/tmp}/table-build-info.XXXXXXXX")
+cleanup() { if [[ -f $metadata/build.json ]]; then rm -- "$metadata/build.json"; fi; rmdir "$metadata"; }
+trap cleanup EXIT
+bash "$here/build-provenance" "$here/.." > "$metadata/build.json"
+# Explicit metadata input: pure Nix evaluations never inspect a live .git tree.
+nix build "$@" --override-input build-info "path:$metadata" --no-write-lock-file

@@ -1,4 +1,4 @@
-const app = Elm.Main.init({ node: document.getElementById("app"), flags: null });
+const app = Elm.Main.init({ node: document.getElementById("app"), flags: "@TABLE_BUILD_REVISION@" });
 let worker;
 let version = 1;
 let rawResult = null;

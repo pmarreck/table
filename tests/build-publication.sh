@@ -4,6 +4,8 @@ scratch=$(mktemp -d "${TMPDIR:?}/table-publication.XXXXXXXX")
 trap 'rm -rf -- "$scratch"' EXIT
 mkdir -p "$scratch/project" "$scratch/tools"
 cp build "$scratch/project/build"
+mkdir -p "$scratch/project/scripts"
+cp scripts/nix-build scripts/build-provenance "$scratch/project/scripts/"
 printf 'rust\n' > "$scratch/project/CANONICAL_IMPL"
 cat > "$scratch/tools/uname" <<'STUB'
 #!/usr/bin/env bash

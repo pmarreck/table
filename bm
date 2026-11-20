@@ -2,8 +2,9 @@
 set -euo pipefail
 cd "$(dirname "$0")"
 implementation=all
+startup_only=0
 if [[ ${1:-} == --help ]]; then
-    echo 'Usage: ./bm [--implementation all|rust|zig|roc|luajit] [performance-profile options]'
+    echo 'Usage: ./bm [--implementation all|rust|zig|roc|luajit] [--startup-only] [performance-profile options]'
     echo 'All implementations are required by default. Override executable paths with TABLE_BENCHMARK_RUST, TABLE_BENCHMARK_ZIG and TABLE_BENCHMARK_ROC, TABLE_BENCHMARK_LUAJIT.'
     exit 0
 fi
@@ -11,14 +12,15 @@ options=()
 while (($#)); do
     case "$1" in
         --implementation) [[ $# -ge 2 ]] || exit 2; implementation=$2; shift 2 ;;
+        --startup-only) startup_only=1; shift ;;
         --seed|--history-url) [[ $# -ge 2 ]] || exit 2; options+=("$1" "$2"); shift 2 ;;
         --json|--simple) options+=("$1"); shift ;;
         *) echo "table: unknown benchmark option: $1" >&2; exit 2 ;;
     esac
 done
 case "$implementation" in all) implementations=(rust zig roc luajit) ;; rust|zig|roc|luajit) implementations=("$implementation") ;; *) echo 'table: implementation must be all, rust, zig, roc, or luajit' >&2; exit 2 ;; esac
-package=$(nix build --no-link --print-out-paths .#default)
-profiler=$(nix build --no-link --print-out-paths .#profiling-tool)
+package=$(bash scripts/nix-build --no-link --print-out-paths .#default)
+profiler=$(bash scripts/nix-build --no-link --print-out-paths .#profiling-tool)
 export PATH="$package/libexec:$PATH"
 export PERFORMANCE_HISTORY_URL="${PERFORMANCE_HISTORY_URL:-file://${XDG_STATE_HOME:-$HOME/.local/state}/performance-history}"
 export TABLE_BENCHMARK_RUST="${TABLE_BENCHMARK_RUST:-$package/bin/table-rust}"
@@ -34,6 +36,7 @@ done
 verdict=0
 cases=$(table-benchmark --list)
 while IFS= read -r benchmark; do
+    if (( startup_only )) && [[ $benchmark != *-startup-* ]]; then continue; fi
     for impl in "${implementations[@]}"; do
         [[ $benchmark == "$impl-"* ]] || continue
         status=0

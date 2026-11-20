@@ -89,7 +89,7 @@ build_windows() (
         done < <(find "$entry" -mindepth 1 -print0)
     fi
     tmp=$(mktemp -d "$root/.nix-out/$pf/.candidate.XXXXXXXX")
-    nix build --out-link "$tmp/output" "$attribute"
+    bash scripts/nix-build --out-link "$tmp/output" "$attribute"
     for command in table.exe tsv-to-ansi-table.exe; do
         file -Lb "$tmp/output/bin/$command" | grep -Eq "$pattern" || { echo "table: $command executable header does not match $pf" >&2; exit 1; }
     done
@@ -141,7 +141,7 @@ build_one() (
     tmp=$(mktemp -d "$root/.nix-out/$pf/.candidate.XXXXXXXX")
     attribute=".#packages.$system.default"
     if [[ $host == linux-amd64 && $pf == linux-arm64 && $canonical == rust ]]; then attribute='.#linux-arm64-cross'; fi
-    nix build --out-link "$tmp/output" "$attribute"
+    bash scripts/nix-build --out-link "$tmp/output" "$attribute"
     for command in table tsv-to-ansi-table; do
         file -Lb "$tmp/output/bin/$command" | grep -Eq "$pattern" || { echo "table: $command executable header does not match $pf" >&2; exit 1; }
     done

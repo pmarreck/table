@@ -34,6 +34,16 @@ require Nix. The build publishes commands in `bin/<PF>/`; on Linux x86-64:
 printf 'name,count\nAlice,2\n' | bin/linux-amd64/table --to markdown
 ```
 
+Rust builds use the pinned Rust 1.100.0 provider for native executables, the
+independent CSV oracle, cross targets and WASM. Cargo lockfiles and the other
+language toolchains retain their existing pins.
+
+Build wrappers capture `rN-abcdef` identities from the commit and its `yolo`
+base, with dirty state reported separately. `--about`, the web footer and
+`BUILD-INFO.json` carry that identity. Direct Nix builds without supplied Git
+metadata report `provenance-unavailable`; `bash scripts/nix-build` accepts the
+usual `nix build` arguments while supplying verified Git metadata.
+
 The build also publishes `bin/<PF>/tsv-to-ansi-table`, the pinned predecessor's
 original command, for existing scripts and its fixed-width streaming mode.
 
@@ -56,8 +66,12 @@ and `bin/table-luajit`; for example, after `./build`:
 `nix build .#rust`, `.#zig`, `.#roc` and `.#luajit` also expose the corresponding
 packages. `./build canonize roc` records a selection without building or changing
 installed commands; rerun `./build` to publish it. Windows publication currently
-requires the Rust selection and refuses an unqualified alternative. Linux ARM64
-non-Rust packages require a native builder. LuaJIT includes its pinned interpreter
+requires the Rust selection and refuses an unqualified alternative. The complete
+Linux ARM64 package still requires a native builder. Explicit cross outputs also
+include `linux-arm64-zig-cross`, `linux-arm64-roc-cross`,
+`windows-amd64-zig-cross`, `windows-arm64-zig-cross` and
+`windows-amd64-luajit-cross`; these are separate from native runtime qualification.
+LuaJIT includes its pinned interpreter
 and native I/O/Unicode dependency in the Nix closure; it is not a standalone
 statically linked executable.
 
@@ -261,6 +275,10 @@ Unicode validation and width calculation remain the fallback for other cells.
 original diagnostic experiments and the production optimization.
 
 `./big_o` and `./mg` currently measure Rust input growth and allocator usage.
+`./test` enforces allocation-growth bounds and zero residual Rust allocations
+for the CSV/IR cycle, with independent policy evaluation and negative controls.
+`./performance-check` collects fresh growth, memory and four-implementation
+startup observations; unapproved cohorts remain unbaselined and exit nonzero.
 See [performance cases](docs/performance.md) for coverage and remaining gates.
 
 ## License

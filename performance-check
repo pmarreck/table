@@ -1,0 +1,22 @@
+#!/usr/bin/env bash
+# Fresh host measurements; deliberately separate from cached Nix derivations.
+set -euo pipefail
+cd "$(dirname "$0")"
+if [[ ${1:-} == --help ]]; then
+    echo 'Usage: ./performance-check [--seed N] [--history-url URL] [--json|--simple]'
+    echo 'Runs declared Rust growth/memory cases and fresh startup for all four CLIs.'
+    echo 'Unbaselined observations exit 3 and require approval of exact run IDs.'
+    exit 0
+fi
+verdict=0
+for suite in big_o mg bm; do
+    options=(); if [[ $suite == bm ]]; then options+=(--startup-only); fi
+    status=0
+    "./$suite" "${options[@]}" "$@" || status=$?
+    case $status in
+        0) ;;
+        3) if (( verdict==0 )); then verdict=3; fi ;;
+        *) verdict=1 ;;
+    esac
+done
+exit "$verdict"

@@ -40,15 +40,30 @@ The correctness suite compares the adapter's declared case names against the
 manifest and requires both affinity configurations for each. This detects
 missing manifest entries for declared cases, not unmeasured code paths.
 
-`./mg` measures peak requested bytes, allocation count and residual requested
+`./mg` gates peak requested bytes and allocation count as separate cases, and measures residual requested
 bytes during the same CSV/IR cycle, using Rust's global allocator. The input
 fixture, operating-system allocations and C-library allocations are excluded;
 this is not whole-process memory coverage. A canary checks allocation,
-reallocation, retained bytes and cleanup accounting. Both probes are initially
-unbaselined and are not yet part of `./test`.
+reallocation, retained bytes and cleanup accounting. Both historical cases remain
+unbaselined. `./test` also runs bounded deterministic checks through the pinned
+shared evaluator: every measured cycle must leave zero residual bytes, and every
+adjacent peak/count ratio must remain within 1.8 to 2.2 over 1,024 to 8,192 rows.
+The checker rejects wrong or skipped work, missing sizes, zero samples, leaks,
+quadratic and crossover growth, and unexpectedly constant counts. A separate
+reviewer accepted these controls before integration; the full Nix suite exercises
+them on Linux amd64 and macOS ARM64.
 
-These cases do not yet measure terminal rendering, streaming behavior,
-whole-process memory, or CLI startup independently of its adapter. The complete performance gate and an
+`./performance-check` collects the eight Rust growth cases, both allocation
+cases, and all eight real-CLI startup cases through the same external-history
+engine. `./bm --startup-only` selects those startup cases explicitly. These fresh
+measurements run outside cached derivations and retain the existing retry,
+cohort and owner-approval rules. They do not turn an unbaselined observation into
+a historical pass. Required live-history integration remains pending reviewed
+anchors and the runner's outside-sandbox measurement pipeline.
+
+The growth and allocator probes do not measure terminal rendering, streaming
+behavior or whole-process memory. Separate real-CLI startup cases exclude the
+adapter's initialization and use fresh processes with warm filesystem caches. The complete performance gate and an
 independently reviewed baseline remain open work. Finite timing sweeps are not
 a proof of asymptotic complexity.
 
