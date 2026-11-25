@@ -27,3 +27,7 @@ Completed PLAN.md items retired by plan-retire, oldest retirement first.
 - [x] [PLAN] Implement the complete Roc CLI and qualify shared native behavior on Linux x86-64 and macOS ARM64; wider targets remain below (done 2026-11-06 09:35 EST; commit f4698fe).
 - [x] [PLAN] Build and compare complete Rust/Zig WASM converters with fingerprinting and the pinned pure renderer; select Rust from 24 verified browser benchmarks, with both candidates passing 70 conformance cases (context: docs/web-wasm-results.json; done 2026-11-07 10:22 EST; commit ab9758a).
 - [x] [PLAN] Build a responsive Elm interface with dropdowns, configuration controls, raw/printable IR separation, copy and download; all 36 conversion routes pass desktop/mobile browser checks (done 2026-11-07 10:22 EST; commit ab9758a).
+
+## Retired 2026-11-25
+
+- [x] [PLAN] Verify browser behavior and privacy, publish through GitHub Pages, and link the repository's online version; all 13 live assets match the tested artifact, deployment and Mechatron pass, and the About box links to the site (done 2026-11-07 10:22 EST; commit ab9758a).
