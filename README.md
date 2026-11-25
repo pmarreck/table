@@ -20,7 +20,8 @@ printf 'name,count\nAlice,2\n' | table --to markdown
 
 Rust, Zig, Roc and LuaJIT provide the same CLI. All four pass one shared
 acceptance suite and 858 direct output/status/error comparisons on Linux x86-64
-and macOS ARM64. Rust remains the checked-in default while broader platform
+and macOS ARM64. The same checks also pass for all four Linux ARM64 CLIs under
+QEMU/PRoot emulation. Rust remains the checked-in default while broader platform
 qualification is completed. Roc is intended to become the default after that
 qualification. See
 [implementation parity](docs/implementation-parity.md).
@@ -68,7 +69,7 @@ packages. `./build canonize roc` records a selection without building or changin
 installed commands; rerun `./build` to publish it. Windows publication currently
 requires the Rust selection and refuses an unqualified alternative. The complete
 Linux ARM64 package still requires a native builder. Explicit cross outputs also
-include `linux-arm64-zig-cross`, `linux-arm64-roc-cross`,
+include `linux-arm64-zig-cross`, `linux-arm64-roc-cross`, `linux-arm64-luajit-cross`,
 `windows-amd64-zig-cross`, `windows-arm64-zig-cross` and
 `windows-amd64-luajit-cross`; these are separate from native runtime qualification.
 LuaJIT includes its pinned interpreter
@@ -234,7 +235,8 @@ cells. `--about` is checked separately because ABI/runtime metadata can differ.
 Finite tests establish agreement for those cases, not a universal proof. The CI
 manifest builds the Linux checks, Linux ARM64 cross target, macOS ARM64 package
 and both Windows targets from the exact pushed commit. Native Windows and Linux
-ARM64 runtime qualification remains open; cross-builds and emulator results are
+ARM64 runtime qualification remains open; Linux x86-64 checks additionally run
+the full shared suite under ARM64 emulation. Cross-builds and emulator results are
 separate evidence.
 
 `./bm` measures the same six workloads for all four implementations with

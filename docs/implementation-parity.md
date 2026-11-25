@@ -34,11 +34,17 @@ preexisting Roc/LuaJIT diagnostic mismatch for a lone vertical separator; both
 now match Rust and Zig.
 
 The full shared suite has passed natively on Linux x86-64 and macOS ARM64.
-Nix exposes native Linux ARM64 outputs, but those require a native builder and
-have not yet run this suite. Rust also retains its Linux ARM64 and Windows
-cross-build outputs. The pinned Roc platform does not supply Windows ARM64 host
+Linux x86-64 checks also run all four ARM64 cross-built CLIs under pinned static
+QEMU and PRoot, with the same twelve CLI tests, shared acceptance checks and
+858-case parity corpus. The Rust harness and Lua runner execute as ARM64;
+external CSV/GFM oracles remain native. LuaJIT's converter retains its normal
+JIT behavior while the test runner uses `-joff`. These are emulated results,
+not native ARM64 qualification. See [platform qualification](plan_context/platform-qualification.md).
+
+Native Linux ARM64 packages still require a native builder. Rust also retains
+its Windows cross-build outputs. The pinned Roc platform does not supply Windows ARM64 host
 artifacts and its x86-64 host lacks required CRT import libraries. Zig and LuaJIT
-Windows packaging/runtime qualification is also pending. None of those gaps is
+Windows runtime qualification is also pending. None of those gaps is
 silently substituted with a different implementation.
 
 `CANONICAL_IMPL` records the default selection. It remains `rust` until Roc

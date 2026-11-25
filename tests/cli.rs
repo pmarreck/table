@@ -214,7 +214,8 @@ fn installed_renderer_is_selected_relative_to_executable() {
     let output = Command::new(binary).args(["--from", "csv", "--to", "ansi"])
         .stdin(Stdio::null()).output().unwrap();
     assert!(!output.status.success());
-    assert!(String::from_utf8_lossy(&output.stderr).contains("cannot start renderer"));
+    assert!(String::from_utf8_lossy(&output.stderr).contains("cannot start renderer"),
+        "relocated renderer diagnostic: {}", String::from_utf8_lossy(&output.stderr));
     }
 }
 

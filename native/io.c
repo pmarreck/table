@@ -32,6 +32,7 @@ int64_t table_width(const unsigned char *s,size_t n) {
 #define close _close
 #else
 #include <unistd.h>
+#include <fcntl.h>
 #include <sys/ioctl.h>
 #include <sys/wait.h>
 #include <spawn.h>
@@ -125,6 +126,11 @@ const char *table_renderer(void) {
  * Outputs are owned by caller and released with table_free. */
 int table_process(const char *program,char *const *argv,const unsigned char *input,size_t length,int inherit,TableProcess *r) {
     memset(r,0,sizeof(*r)); FILE *in=NULL,*out=NULL,*err=NULL;
+#ifndef _WIN32
+    /* Spawn may report an exec failure only as child status 127. Check this
+     * predictable launch error first, using the effective credentials. */
+    if(faccessat(AT_FDCWD,program,X_OK,AT_EACCESS)!=0) goto fail;
+#endif
     if(!inherit) { in=tmpfile(); out=tmpfile(); err=tmpfile(); if(!in||!out||!err) goto fail;
         if(fwrite(input,1,length,in)!=length||fflush(in)) goto fail; rewind(in); }
 #ifdef _WIN32

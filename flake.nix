@@ -49,6 +49,12 @@
       };
       profilingTool = renderer.inputs.performance-profiling.packages.${system}.default;
       luaTools = pkgs.luajit.withPackages (p: [ p.lua-cjson p.luv ]);
+      armPkgs = import nixpkgs { system = "aarch64-linux"; };
+      armLuaTools = pkgs.buildEnv {
+        name = "table-arm64-lua-test-tools";
+        paths = [ armPkgs.luajit armPkgs.luajit.pkgs.lua-cjson armPkgs.luajit.pkgs.luv ];
+        pathsToLink = [ "/bin" "/lib/lua" "/share/lua" ];
+      };
       csvOracle = (platformFor pkgs).buildRustPackage {
         pname = "table-csv-oracle"; version = "0.1.0";
         src = ./tests/csv-oracle;
@@ -91,32 +97,35 @@
           cat ${pkgs.luajit.src}/COPYRIGHT
         } > "$out"
       '';
-      nativeIo = pkgs.stdenv.mkDerivation {
+      nativeIoFor = targetPkgs: platform: rendererExe: targetPkgs.stdenv.mkDerivation {
         pname = "table-native-io"; version = "0.1.0";
         src = ./native;
         buildPhase = ''
-          $CC -O2 -fPIC ${if pkgs.stdenv.hostPlatform.isDarwin then "-dynamiclib" else "-shared"} io.c ${unicodeSource}/utf8proc.c -I${unicodeSource} -DUTF8PROC_STATIC -DTABLE_ABOUT='"${about}"' -DTABLE_RENDERER='"${rendererBin}"' -o libtable-native.so
+          $CC -O2 -fPIC ${if targetPkgs.stdenv.hostPlatform.isDarwin then "-dynamiclib" else "-shared"} io.c ${unicodeSource}/utf8proc.c -I${unicodeSource} -DUTF8PROC_STATIC -DTABLE_ABOUT='"table 0.1.0 — Convert tabular data; PF=${platform}${pkgs.lib.optionalString targetPkgs.stdenv.hostPlatform.isLinux " VARIANT=gnu"} ${buildLabel}"' -DTABLE_RENDERER='"${rendererExe}"' -o libtable-native.so
         '';
         installPhase = ''mkdir -p "$out/lib"; cp libtable-native.so "$out/lib/"'';
       };
-      luaPackage = pkgs.stdenvNoCC.mkDerivation {
+      luaPackageFor = targetPkgs: platform: rendererExe: let
+        nativeIo = nativeIoFor targetPkgs platform rendererExe;
+      in pkgs.stdenvNoCC.mkDerivation {
         pname = "table-luajit"; version = "0.1.0";
         src = ./luajit;
         dontBuild = true;
         installPhase = ''
           mkdir -p "$out/bin" "$out/libexec"
           {
-            printf '#!${pkgs.luajit}/bin/luajit\n'
-            printf '%s\n' 'package.preload.table_config=function() return {native="${nativeIo}/lib/libtable-native.so",renderer="${rendererBin}"} end'
+            printf '#!${targetPkgs.luajit}/bin/luajit\n'
+            printf '%s\n' 'package.preload.table_config=function() return {native="${nativeIo}/lib/libtable-native.so",renderer="${rendererExe}"} end'
             cat table.lua
           } > "$out/bin/table-luajit"
           chmod +x "$out/bin/table-luajit"
-          cp ${rendererBin} "$out/libexec/tsv-to-ansi-table"
+          cp ${rendererExe} "$out/libexec/tsv-to-ansi-table"
           mkdir -p "$out/share/licenses/table"
           cp ${commonNotices} "$out/share/licenses/table/THIRD_PARTY_LICENSES.txt"
           ${stamp}
         '';
       };
+      luaPackage = luaPackageFor pkgs pf rendererBin;
       windowsLuaPackage = let
         targetPkgs = pkgs.pkgsCross.mingwW64;
         lua = targetPkgs.luajit.overrideAttrs (old: {
@@ -296,7 +305,8 @@ EOF
         '';
         doCheck = runChecks;
         nativeBuildInputs = [ pkgs.makeWrapper ];
-        nativeCheckInputs = [ pkgs.perl pkgs.file luaTools pkgs.cmark-gfm pkgs.zig_0_16 rocCompiler pkgs.nix pkgs.jq pkgs.git ];
+        nativeCheckInputs = [ pkgs.perl pkgs.file luaTools pkgs.cmark-gfm pkgs.zig_0_16 rocCompiler pkgs.nix pkgs.jq pkgs.git ]
+          ++ pkgs.lib.optionals (system == "x86_64-linux") [ pkgs.proot ];
         checkPhase = ''
           runHook preCheck
           cargo test --no-run --frozen --offline --release --target ${targetPkgs.stdenv.hostPlatform.rust.rustcTarget} --message-format=json-render-diagnostics > cargo-tests.json
@@ -327,6 +337,19 @@ EOF
               luajit tests/shared.lua "$binary" "$TABLE_RENDERER" ${csvOracle}/bin/table-csv-oracle ${markdownCells}/bin/table-markdown-cells
             done
             luajit tests/parity.lua "$rust_binary" ${zigPackage}/bin/table-zig ${rocPackage}/bin/table-roc ${luaPackage}/bin/table-luajit
+            ${pkgs.lib.optionalString (system == "x86_64-linux") ''
+              export TABLE_EMULATION_READONLY=${pkgs.writeText "table-emulation-readonly" "table-emulation-readonly\n"}
+              export TABLE_EMULATION_LUA_CPATH='${armLuaTools}/lib/lua/5.1/?.so'
+              export TABLE_EMULATION_QEMU=${pkgs.pkgsStatic.qemu-user}/bin/qemu-aarch64
+              bash tests/emulated-arm64.sh ${self.packages.${system}.linux-arm64-cli-tests}/bin/table-cli-tests \
+                ${self.packages.${system}.linux-arm64-cross}/bin/table \
+                ${self.packages.${system}.linux-arm64-zig-cross}/bin/table-zig \
+                ${self.packages.${system}.linux-arm64-roc-cross}/bin/table-roc \
+                ${self.packages.${system}.linux-arm64-luajit-cross}/bin/table-luajit \
+                ${renderer.packages.${system}.linux-arm64}/bin/tsv-to-ansi-table-zig \
+                ${csvOracle}/bin/table-csv-oracle ${markdownCells}/bin/table-markdown-cells \
+                ${armLuaTools}/bin/luajit
+            ''}
           ''}
           (
             cd ${renderer}
@@ -379,7 +402,26 @@ EOF
       wasm-benchmark = web.benchmark;
       default = bundle canonical;
     } // pkgs.lib.optionalAttrs (system == "x86_64-linux") {
+      emulation-tools = pkgs.buildEnv {
+        name = "table-emulation-tools";
+        paths = [ pkgs.proot pkgs.pkgsStatic.qemu-user pkgs.bubblewrap pkgs.bash pkgs.coreutils luaTools pkgs.cmark-gfm ];
+      };
+      linux-arm64-luajit-cross = luaPackageFor pkgs.pkgsCross.aarch64-multiplatform "linux-arm64" "${renderer.packages.${system}.linux-arm64}/bin/tsv-to-ansi-table-zig";
       linux-arm64-cross = package pkgs.pkgsCross.aarch64-multiplatform-musl "${renderer.packages.${system}.linux-arm64}/bin/tsv-to-ansi-table-zig" false;
+      linux-arm64-cli-tests = self.packages.${system}.linux-arm64-cross.overrideAttrs (old: {
+        pname = "table-cli-acceptance-arm64";
+        nativeBuildInputs = old.nativeBuildInputs ++ [ pkgs.jq ];
+        postBuild = (old.postBuild or "") + ''
+          cargo test --no-run --test cli --frozen --offline --release --target aarch64-unknown-linux-musl --message-format=json-render-diagnostics > cargo-cli-tests.json
+        '';
+        installPhase = ''
+          mkdir -p "$out/bin"
+          harness=$(jq -ser '[.[] | select(.reason == "compiler-artifact" and .target.name == "cli" and .profile.test and .executable != null) | .executable] | unique | if length == 1 then .[0] else error("expected one ARM64 CLI acceptance harness") end' cargo-cli-tests.json)
+          test -x "$harness"
+          cp "$harness" "$out/bin/table-cli-tests"
+        '';
+        postInstall = "";
+      });
       linux-arm64-zig-cross = zigPackageFor "aarch64-linux-musl" "linux-arm64" "${renderer.packages.${system}.linux-arm64}/bin/tsv-to-ansi-table-zig";
       linux-arm64-roc-cross = rocPackageFor "arm64musl" "linux-arm64" "${renderer.packages.${system}.linux-arm64}/bin/tsv-to-ansi-table-zig";
       windows-amd64-zig-cross = zigPackageFor "x86_64-windows-gnu" "mswin-amd64" "${renderer.packages.${system}.windows-x86_64}/bin/tsv-to-ansi-table-zig.exe";

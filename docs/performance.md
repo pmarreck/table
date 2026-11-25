@@ -61,6 +61,19 @@ cohort and owner-approval rules. They do not turn an unbaselined observation int
 a historical pass. Required live-history integration remains pending reviewed
 anchors and the runner's outside-sandbox measurement pipeline.
 
+The CI infrastructure review on November 20, 2026 confirmed two concrete
+dependencies: the worker currently accepts only cached Nix build targets, and
+the configured history location is neither provisioned nor writable within its
+service sandbox. A required historical gate needs a reviewed, project-opt-in
+post-build hook for the exact commit, a provisioned history directory, and
+immutable receipts containing run IDs and sanitized outcomes. The hook must
+share the whole-job deadline and resource limits and preserve exit status 3.
+It must never accept a baseline automatically. Preparation has been requested
+from the infrastructure project; activation remains a separate infrastructure
+review and owner decision. Cached Nix success cannot satisfy this requirement.
+The infrastructure project has recorded the extension in its own plan and
+`docs/plan_context/table-performance-hook.md`; it has not implemented the hook.
+
 The growth and allocator probes do not measure terminal rendering, streaming
 behavior or whole-process memory. Separate real-CLI startup cases exclude the
 adapter's initialization and use fresh processes with warm filesystem caches. The complete performance gate and an
