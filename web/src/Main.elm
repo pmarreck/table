@@ -616,7 +616,11 @@ view model =
                 , if model.destination == Ir then
                     H.aside [ A.class "ir-notice" ]
                         [ H.strong [] [ H.text "Printable view, original bytes." ]
-                        , H.p [] [ H.text "IR uses non-printing FS, GS, RS and US separators. The preview shows printable-binary glyphs; copy and download use the raw IR. Some apps hide or alter control characters. Download is safest for exact bytes." ]
+                        , H.p []
+                            [ H.text "IR uses non-printing FS, GS, RS and US separators. The preview shows "
+                            , H.a [ A.href "https://github.com/pmarreck/printable_binary" ] [ H.text "printable-binary" ]
+                            , H.text " glyphs; copy and download use the raw IR. Some apps hide or alter control characters. Download is safest for exact bytes."
+                            ]
                         , H.div [ A.id "ir-legend", A.class "ir-legend" ] [ H.text model.legend ]
                         ]
 
